@@ -1,44 +1,44 @@
-# クーの読書記録タイマー PWA版 v5
+# クーの読書記録タイマー PWA版 v6 AI総合感想
 
-本棚に、ジャンル画像と⭐️5段階評価を追加した上書き版です。
+v6では、本ごとの全感想ログをAIに渡して「AI総合感想」を生成する画面を追加しました。
 
-## v5の追加機能
+## v6追加機能
 
-- 本ごとにジャンルを設定
-- 7種類のジャンル画像を本棚カードに表示
-  - ミステリー
-  - SF
-  - 青春
-  - 新書
-  - ホラー
-  - ラノベ
-  - ファンタジー
-- 本棚カード上で⭐️5段階評価を直感的に変更
-- 同じ星をもう一度押すと評価を解除
-- 本の追加・編集画面でもジャンルと評価を設定
-- 本の詳細画面にもジャンル画像と評価を表示
-- 既存データは自動でv5形式に補正
+- 本の詳細画面に「AI総合感想」パネルを追加
+- 「AIで生成」ボタンを追加
+- その本に紐づく全ての感想ログをまとめて送信
+- AIの生成結果を `book.aiSummary` に保存
+- 最終生成日を `book.aiSummaryUpdatedAt` に保存
+- 感想がない本ではAI生成ボタンを無効化
+- 既存のv5データをv6形式へ自動補正
 
-## 上書き方法
+## 重要
 
-このZIPの中身をGitHubリポジトリのルート直下にすべて上書きしてください。
+PWAだけではAI要約は動きません。  
+`app.js` の `AI_SUMMARY_ENDPOINT` にCloudflare WorkersのURLを入れる必要があります。
 
-特に必要なファイル：
+```js
+const AI_SUMMARY_ENDPOINT = "https://あなたのworker名.あなたのサブドメイン.workers.dev";
+```
 
-- `index.html`
-- `style.css`
-- `app.js`
-- `manifest.json`
-- `service-worker.js`
-- `genre-mystery.png`
-- `genre-sf.png`
-- `genre-youth.png`
-- `genre-shinsho.png`
-- `genre-horror.png`
-- `genre-lightnovel.png`
-- `genre-fantasy.png`
+## Cloudflare Workers側で必要な環境変数
 
-## 注意
+- `OPENAI_API_KEY`
+- 任意: `OPENAI_MODEL`
+  - 例: `gpt-4.1-mini`
+- 任意: `ALLOWED_ORIGIN`
+  - GitHub PagesのURLを入れると安全性が上がります
+  - 例: `https://ユーザー名.github.io`
 
-Service Workerのキャッシュ名を `kuu-reading-timer-v5` に変更しています。  
-反映直後に古い画面が出る場合は、Safariで再読み込み、またはホーム画面のPWAを削除して追加し直してください。
+## 反映手順
+
+1. Cloudflare Workersを作る
+2. `cloudflare-worker-ai-summary.js` の中身を貼る
+3. Workersの環境変数に `OPENAI_API_KEY` を設定
+4. Workersをデプロイ
+5. 発行されたWorkers URLをコピー
+6. `app.js` の `AI_SUMMARY_ENDPOINT` に貼る
+7. このv6ファイル一式をGitHubに上書き
+8. GitHub Pagesを開き直す
+
+Service Workerのキャッシュ名は `kuu-reading-timer-v6` です。

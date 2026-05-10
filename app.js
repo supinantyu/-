@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kuuReadingTimerPwa.v5";
-const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
+const STORAGE_KEY = "kuuReadingTimerPwa.v6";
+const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
 
 const IMAGE_PATHS = {
   waiting: ["./kuu_waiting.png"],
@@ -17,6 +17,12 @@ const GENRE_MASTER = {
   fantasy: { label: "ファンタジー", image: "./genre-fantasy.png" }
 };
 
+/*
+  Cloudflare Workersを作ったあと、下のURLを自分のWorkers URLに差し替えてください。
+  例: const AI_SUMMARY_ENDPOINT = "https://kuu-reading-summary.xxxxx.workers.dev";
+*/
+const AI_SUMMARY_ENDPOINT = "";
+
 const state = {
   data: { books: [], notes: [] },
   timerState: "waiting",
@@ -26,8 +32,7 @@ const state = {
   detailBookId: null,
   editingBookId: null,
   editingNoteId: null,
-  tempBookRating: 0,
-  imageFallbackIndex: { waiting: 0, reading: 0, recording: 0 }
+  tempBookRating: 0
 };
 
 const els = {
@@ -78,6 +83,9 @@ const els = {
   detailTotalMinutes: document.querySelector("#detailTotalMinutes"),
   detailTotalPages: document.querySelector("#detailTotalPages"),
   detailNoteCount: document.querySelector("#detailNoteCount"),
+  generateAiSummaryButton: document.querySelector("#generateAiSummaryButton"),
+  aiSummaryBox: document.querySelector("#aiSummaryBox"),
+  aiSummaryUpdatedAt: document.querySelector("#aiSummaryUpdatedAt"),
   backToBookshelfButton: document.querySelector("#backToBookshelfButton"),
   exportButton: document.querySelector("#exportButton"),
   importButton: document.querySelector("#importButton"),
@@ -136,6 +144,7 @@ function loadData() {
       if (raw) break;
     }
   }
+
   if (!raw) {
     state.data = {
       books: [{
@@ -144,6 +153,8 @@ function loadData() {
         author: "クー",
         genre: "mystery",
         rating: 0,
+        aiSummary: "",
+        aiSummaryUpdatedAt: "",
         createdAt: new Date().toISOString(),
         isFinished: false
       }],
@@ -171,6 +182,8 @@ function normalizeData() {
     author: book.author || "",
     genre: GENRE_MASTER[book.genre] ? book.genre : "mystery",
     rating: Math.max(0, Math.min(5, Number(book.rating || 0))),
+    aiSummary: book.aiSummary || "",
+    aiSummaryUpdatedAt: book.aiSummaryUpdatedAt || "",
     createdAt: book.createdAt || new Date().toISOString(),
     isFinished: Boolean(book.isFinished)
   }));
@@ -290,9 +303,7 @@ function renderRecordPanel() {
   const book = selectedBook();
   els.recordBookTitle.textContent = `本：${book ? book.title : "未選択"}`;
   els.recordTime.textContent = `読書時間：${readingMinutes()}分`;
-  if (isRecording && !els.dateInput.value) {
-    els.dateInput.value = todayInputValue();
-  }
+  if (isRecording && !els.dateInput.value) els.dateInput.value = todayInputValue();
 }
 
 function renderStars(book) {
@@ -365,6 +376,7 @@ function renderBookshelf() {
           ${book.author ? `<p class="meta">${escapeHtml(book.author)}</p>` : ""}
           <p class="meta">ジャンル：${genreInfo.label}</p>
           ${renderStars(book)}
+          ${book.aiSummary ? `<p class="meta">AI総合感想：作成済み</p>` : ""}
           <p class="meta">合計 ${totalMinutes}分 / ${totalPages}ページ / 感想 ${notes.length}件</p>
           <p class="meta">最終記録日：${lastDateLabel}</p>
         </div>
@@ -411,6 +423,15 @@ function renderDetail() {
   els.detailTotalPages.textContent = totalPages;
   els.detailNoteCount.textContent = notes.length;
 
+  if (book.aiSummary) {
+    setAiSummaryStatus(book.aiSummary, "content");
+    els.aiSummaryUpdatedAt.textContent = book.aiSummaryUpdatedAt ? `最終生成：${formatDate(book.aiSummaryUpdatedAt)}` : "";
+  } else {
+    setAiSummaryStatus("まだAI総合感想はありません。", "muted");
+    els.aiSummaryUpdatedAt.textContent = "";
+  }
+  els.generateAiSummaryButton.disabled = notes.length === 0;
+
   els.noteList.innerHTML = "";
   if (notes.length === 0) {
     els.noteList.innerHTML = `<article class="note-card"><h3>感想はまだありません</h3><p class="meta">読書後に感想を保存するとここに表示されます。</p></article>`;
@@ -436,10 +457,83 @@ function renderDetail() {
   els.noteList.querySelectorAll("[data-edit-note]").forEach(button => {
     button.addEventListener("click", () => openEditNoteModal(button.getAttribute("data-edit-note")));
   });
-
   els.noteList.querySelectorAll("[data-delete-note]").forEach(button => {
     button.addEventListener("click", () => deleteNote(button.getAttribute("data-delete-note")));
   });
+}
+
+function buildAiSummaryPayload(book, notes) {
+  const genreInfo = getGenreInfo(book.genre);
+
+  return {
+    title: book.title,
+    author: book.author || "",
+    genre: genreInfo.label,
+    rating: Number(book.rating || 0),
+    totalMinutes: notes.reduce((sum, note) => sum + Number(note.minutes || 0), 0),
+    totalPages: notes.reduce((sum, note) => sum + Number(note.pages || 0), 0),
+    notes: notes.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).map(note => ({
+      date: formatDate(note.date),
+      minutes: Number(note.minutes || 0),
+      pages: Number(note.pages || 0),
+      memo: note.memo || "",
+      summary: note.summary || ""
+    }))
+  };
+}
+
+function setAiSummaryStatus(message, mode = "muted") {
+  els.aiSummaryBox.textContent = message;
+  els.aiSummaryBox.classList.toggle("loading", mode === "loading");
+  els.aiSummaryBox.classList.toggle("has-content", mode === "content");
+  els.aiSummaryBox.classList.toggle("muted", mode === "muted");
+}
+
+async function generateAiSummary() {
+  const book = state.data.books.find(item => item.id === state.detailBookId);
+  if (!book) return;
+
+  const notes = notesForBook(book.id);
+  if (notes.length === 0) {
+    alert("感想ログがまだありません。先に感想を保存してください。");
+    return;
+  }
+
+  if (!AI_SUMMARY_ENDPOINT) {
+    alert("AI_SUMMARY_ENDPOINT が未設定です。Cloudflare WorkersのURLを app.js に設定してください。");
+    return;
+  }
+
+  els.generateAiSummaryButton.disabled = true;
+  els.generateAiSummaryButton.textContent = "生成中";
+  setAiSummaryStatus("クーが全感想を統合中です。しばらくお待ちください。", "loading");
+
+  try {
+    const response = await fetch(AI_SUMMARY_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildAiSummaryPayload(book, notes))
+    });
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) throw new Error(result.error || `AI生成に失敗しました。status: ${response.status}`);
+
+    const summary = String(result.summary || "").trim();
+    if (!summary) throw new Error("AIから空の結果が返りました。");
+
+    book.aiSummary = summary;
+    book.aiSummaryUpdatedAt = new Date().toISOString();
+    saveData();
+    renderDetail();
+    renderBookshelf();
+  } catch (error) {
+    console.error(error);
+    setAiSummaryStatus(`生成に失敗しました。\n${error.message || "時間を置いて再試行してください。"}`, "muted");
+  } finally {
+    els.generateAiSummaryButton.disabled = false;
+    els.generateAiSummaryButton.textContent = "AIで生成";
+  }
 }
 
 function startReading() {
@@ -482,11 +576,13 @@ function resetTimer() {
 function saveNote() {
   const book = selectedBook();
   if (!book) return;
+
   const memo = els.memoInput.value.trim();
   if (!memo) {
     alert("感想を入力してください。");
     return;
   }
+
   state.data.notes.unshift({
     id: createId(),
     bookId: book.id,
@@ -496,6 +592,7 @@ function saveNote() {
     summary: els.summaryInput.value.trim(),
     date: inputDateToISO(els.dateInput.value)
   });
+
   saveData();
   resetTimer();
   setView("bookshelf");
@@ -515,6 +612,7 @@ function openAddBookModal() {
 function openEditBookModal(bookId) {
   const book = state.data.books.find(item => item.id === bookId);
   if (!book) return;
+
   state.editingBookId = bookId;
   state.tempBookRating = Number(book.rating || 0);
   els.bookModalTitle.textContent = "本を編集";
@@ -549,6 +647,8 @@ function saveBook() {
       author,
       genre: GENRE_MASTER[genre] ? genre : "mystery",
       rating: Math.max(0, Math.min(5, Number(state.tempBookRating || 0))),
+      aiSummary: "",
+      aiSummaryUpdatedAt: "",
       createdAt: new Date().toISOString(),
       isFinished: false
     };
@@ -568,18 +668,18 @@ function saveBook() {
 function deleteBook(bookId) {
   const book = state.data.books.find(item => item.id === bookId);
   if (!book) return;
+
   if (!confirm(`「${book.title}」と、その感想ログをすべて削除しますか？`)) return;
 
   state.data.books = state.data.books.filter(item => item.id !== bookId);
   state.data.notes = state.data.notes.filter(note => note.bookId !== bookId);
 
-  if (state.selectedBookId === bookId) {
-    state.selectedBookId = state.data.books[0]?.id ?? null;
-  }
+  if (state.selectedBookId === bookId) state.selectedBookId = state.data.books[0]?.id ?? null;
   if (state.detailBookId === bookId) {
     state.detailBookId = null;
     setView("bookshelf");
   }
+
   saveData();
   render();
 }
@@ -587,6 +687,7 @@ function deleteBook(bookId) {
 function openEditNoteModal(noteId) {
   const note = state.data.notes.find(item => item.id === noteId);
   if (!note) return;
+
   state.editingNoteId = noteId;
   els.editNoteDateInput.value = isoToInputDate(note.date);
   els.editNotePagesInput.value = Number(note.pages || 0);
@@ -598,15 +699,18 @@ function openEditNoteModal(noteId) {
 function saveEditedNote() {
   const note = state.data.notes.find(item => item.id === state.editingNoteId);
   if (!note) return;
+
   const memo = els.editNoteMemoInput.value.trim();
   if (!memo) {
     alert("感想を入力してください。");
     return;
   }
+
   note.date = inputDateToISO(els.editNoteDateInput.value);
   note.pages = Number(els.editNotePagesInput.value || 0);
   note.memo = memo;
   note.summary = els.editNoteSummaryInput.value.trim();
+
   state.editingNoteId = null;
   saveData();
   els.noteModal.close();
@@ -642,6 +746,7 @@ function importBackup(file) {
         return;
       }
       if (!confirm("現在のデータをバックアップ内容で置き換えますか？")) return;
+
       state.data = imported;
       normalizeData();
       state.selectedBookId = state.data.books[0]?.id ?? null;
@@ -689,6 +794,7 @@ function bindEvents() {
   els.saveEditedNoteButton.addEventListener("click", saveEditedNote);
 
   els.backToBookshelfButton.addEventListener("click", () => setView("bookshelf"));
+  els.generateAiSummaryButton.addEventListener("click", generateAiSummary);
   els.exportButton.addEventListener("click", exportBackup);
   els.importButton.addEventListener("click", () => els.importFileInput.click());
   els.importFileInput.addEventListener("change", event => {
