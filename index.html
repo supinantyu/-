@@ -33,7 +33,7 @@
           <label class="label" for="bookSelect">読む本</label>
           <div class="book-row">
             <select id="bookSelect"></select>
-            <button id="openBookModalButton" class="secondary-button" type="button">本を追加</button>
+            <button id="openAddBookModalButton" class="secondary-button" type="button">本を追加</button>
           </div>
         </section>
 
@@ -51,6 +51,9 @@
           <h2>読書記録</h2>
           <p id="recordBookTitle" class="muted">本：未選択</p>
           <p id="recordTime" class="muted">読書時間：0分</p>
+
+          <label class="label" for="dateInput">読書日</label>
+          <input id="dateInput" type="date">
 
           <label class="label" for="pagesInput">読んだページ数</label>
           <input id="pagesInput" inputmode="numeric" type="number" min="0" placeholder="例：24">
@@ -103,14 +106,36 @@
 
   <dialog id="bookModal" class="modal">
     <form method="dialog" class="modal-card">
-      <h2>本を追加</h2>
+      <h2 id="bookModalTitle">本を追加</h2>
       <label class="label" for="bookTitleInput">タイトル</label>
       <input id="bookTitleInput" type="text" placeholder="例：変な家">
       <label class="label" for="bookAuthorInput">著者 任意</label>
       <input id="bookAuthorInput" type="text" placeholder="例：雨穴">
       <div class="modal-actions">
         <button id="closeBookModalButton" class="secondary-button" type="button">キャンセル</button>
-        <button id="addBookButton" class="primary-button" type="button">追加</button>
+        <button id="saveBookButton" class="primary-button" type="button">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="noteModal" class="modal">
+    <form method="dialog" class="modal-card">
+      <h2>感想ログを編集</h2>
+      <label class="label" for="editNoteDateInput">読書日</label>
+      <input id="editNoteDateInput" type="date">
+
+      <label class="label" for="editNotePagesInput">読んだページ数</label>
+      <input id="editNotePagesInput" inputmode="numeric" type="number" min="0">
+
+      <label class="label" for="editNoteMemoInput">感想</label>
+      <textarea id="editNoteMemoInput" rows="7"></textarea>
+
+      <label class="label" for="editNoteSummaryInput">要約メモ 任意</label>
+      <textarea id="editNoteSummaryInput" rows="4"></textarea>
+
+      <div class="modal-actions">
+        <button id="closeNoteModalButton" class="secondary-button" type="button">キャンセル</button>
+        <button id="saveEditedNoteButton" class="primary-button" type="button">保存</button>
       </div>
     </form>
   </dialog>

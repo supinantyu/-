@@ -1,4 +1,5 @@
-const STORAGE_KEY = "kuuReadingTimerPwa.v2";
+const STORAGE_KEY = "kuuReadingTimerPwa.v3";
+const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
 
 const IMAGE_PATHS = {
   waiting: ["./assets/kuu_waiting.png", "./kuu_waiting.png"],
@@ -13,6 +14,8 @@ const state = {
   elapsedSeconds: 0,
   timerId: null,
   detailBookId: null,
+  editingBookId: null,
+  editingNoteId: null,
   imageFallbackIndex: { waiting: 0, reading: 0, recording: 0 }
 };
 
@@ -34,15 +37,24 @@ const els = {
   recordPanel: document.querySelector("#recordPanel"),
   recordBookTitle: document.querySelector("#recordBookTitle"),
   recordTime: document.querySelector("#recordTime"),
+  dateInput: document.querySelector("#dateInput"),
   pagesInput: document.querySelector("#pagesInput"),
   memoInput: document.querySelector("#memoInput"),
   summaryInput: document.querySelector("#summaryInput"),
   bookModal: document.querySelector("#bookModal"),
-  openBookModalButton: document.querySelector("#openBookModalButton"),
+  bookModalTitle: document.querySelector("#bookModalTitle"),
+  openAddBookModalButton: document.querySelector("#openAddBookModalButton"),
   closeBookModalButton: document.querySelector("#closeBookModalButton"),
-  addBookButton: document.querySelector("#addBookButton"),
+  saveBookButton: document.querySelector("#saveBookButton"),
   bookTitleInput: document.querySelector("#bookTitleInput"),
   bookAuthorInput: document.querySelector("#bookAuthorInput"),
+  noteModal: document.querySelector("#noteModal"),
+  closeNoteModalButton: document.querySelector("#closeNoteModalButton"),
+  saveEditedNoteButton: document.querySelector("#saveEditedNoteButton"),
+  editNoteDateInput: document.querySelector("#editNoteDateInput"),
+  editNotePagesInput: document.querySelector("#editNotePagesInput"),
+  editNoteMemoInput: document.querySelector("#editNoteMemoInput"),
+  editNoteSummaryInput: document.querySelector("#editNoteSummaryInput"),
   bookList: document.querySelector("#bookList"),
   noteList: document.querySelector("#noteList"),
   detailTitle: document.querySelector("#detailTitle"),
@@ -70,8 +82,42 @@ function createId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function todayInputValue() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 10);
+}
+
+function inputDateToISO(dateValue) {
+  if (!dateValue) return new Date().toISOString();
+  return new Date(`${dateValue}T12:00:00`).toISOString();
+}
+
+function isoToInputDate(isoValue) {
+  const date = new Date(isoValue);
+  if (Number.isNaN(date.getTime())) return todayInputValue();
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 10);
+}
+
+function formatDate(isoValue) {
+  const date = new Date(isoValue);
+  if (Number.isNaN(date.getTime())) return "日付不明";
+  return date.toLocaleDateString("ja-JP", { year: "numeric", month: "short", day: "numeric" });
+}
+
 function loadData() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  let raw = localStorage.getItem(STORAGE_KEY);
+
+  if (!raw) {
+    for (const key of OLD_STORAGE_KEYS) {
+      raw = localStorage.getItem(key);
+      if (raw) break;
+    }
+  }
+
   if (!raw) {
     state.data = {
       books: [{
@@ -91,9 +137,31 @@ function loadData() {
     const parsed = JSON.parse(raw);
     state.data.books = Array.isArray(parsed.books) ? parsed.books : [];
     state.data.notes = Array.isArray(parsed.notes) ? parsed.notes : [];
+    normalizeData();
+    saveData();
   } catch {
     state.data = { books: [], notes: [] };
   }
+}
+
+function normalizeData() {
+  state.data.books = state.data.books.map(book => ({
+    id: book.id || createId(),
+    title: book.title || "無題の本",
+    author: book.author || "",
+    createdAt: book.createdAt || new Date().toISOString(),
+    isFinished: Boolean(book.isFinished)
+  }));
+
+  state.data.notes = state.data.notes.map(note => ({
+    id: note.id || createId(),
+    bookId: note.bookId,
+    minutes: Number(note.minutes || 1),
+    pages: Number(note.pages || 0),
+    memo: note.memo || "",
+    summary: note.summary || "",
+    date: note.date || new Date().toISOString()
+  })).filter(note => note.bookId && state.data.books.some(book => book.id === note.bookId));
 }
 
 function saveData() {
@@ -130,6 +198,9 @@ function setView(name) {
 
 function setTimerState(nextState) {
   state.timerState = nextState;
+  if (nextState === "recording" && !els.dateInput.value) {
+    els.dateInput.value = todayInputValue();
+  }
   render();
 }
 
@@ -212,6 +283,9 @@ function renderRecordPanel() {
   const book = selectedBook();
   els.recordBookTitle.textContent = `本：${book ? book.title : "未選択"}`;
   els.recordTime.textContent = `読書時間：${readingMinutes()}分`;
+  if (isRecording && !els.dateInput.value) {
+    els.dateInput.value = todayInputValue();
+  }
 }
 
 function renderBookshelf() {
@@ -226,6 +300,7 @@ function renderBookshelf() {
     const notes = notesForBook(book.id);
     const totalMinutes = notes.reduce((sum, note) => sum + Number(note.minutes || 0), 0);
     const totalPages = notes.reduce((sum, note) => sum + Number(note.pages || 0), 0);
+    const lastDateLabel = notes[0] ? formatDate(notes[0].date) : "記録なし";
 
     const card = document.createElement("article");
     card.className = "book-card";
@@ -233,12 +308,23 @@ function renderBookshelf() {
       <h3>${escapeHtml(book.title)}</h3>
       ${book.author ? `<p class="meta">${escapeHtml(book.author)}</p>` : ""}
       <p class="meta">合計 ${totalMinutes}分 / ${totalPages}ページ / 感想 ${notes.length}件</p>
+      <p class="meta">最終記録日：${lastDateLabel}</p>
+      <div class="card-actions">
+        <button class="secondary-button" data-open-book="${book.id}" type="button">開く</button>
+        <button class="secondary-button" data-edit-book="${book.id}" type="button">編集</button>
+        <button class="danger-button" data-delete-book="${book.id}" type="button">削除</button>
+      </div>
     `;
-    card.addEventListener("click", () => {
+
+    card.querySelector("[data-open-book]").addEventListener("click", () => {
       state.detailBookId = book.id;
       renderDetail();
       setView("detail");
     });
+
+    card.querySelector("[data-edit-book]").addEventListener("click", () => openEditBookModal(book.id));
+    card.querySelector("[data-delete-book]").addEventListener("click", () => deleteBook(book.id));
+
     els.bookList.append(card);
   }
 }
@@ -267,28 +353,27 @@ function renderDetail() {
   }
 
   for (const note of notes) {
-    const date = new Date(note.date);
-    const dateLabel = Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("ja-JP", { year: "numeric", month: "short", day: "numeric" });
     const card = document.createElement("article");
     card.className = "note-card";
     card.innerHTML = `
-      <h3>${dateLabel}</h3>
+      <h3>${formatDate(note.date)}</h3>
       <p class="meta">${Number(note.minutes || 0)}分 / ${Number(note.pages || 0)}ページ</p>
       <p class="note-body">${escapeHtml(note.memo)}</p>
       ${note.summary ? `<div class="summary-box">${escapeHtml(note.summary)}</div>` : ""}
-      <button class="ghost-button full" data-delete-note="${note.id}" type="button">この感想を削除</button>
+      <div class="note-actions">
+        <button class="secondary-button" data-edit-note="${note.id}" type="button">編集</button>
+        <button class="danger-button" data-delete-note="${note.id}" type="button">削除</button>
+      </div>
     `;
     els.noteList.append(card);
   }
 
+  els.noteList.querySelectorAll("[data-edit-note]").forEach(button => {
+    button.addEventListener("click", () => openEditNoteModal(button.getAttribute("data-edit-note")));
+  });
+
   els.noteList.querySelectorAll("[data-delete-note]").forEach(button => {
-    button.addEventListener("click", () => {
-      const id = button.getAttribute("data-delete-note");
-      if (!confirm("この感想を削除しますか？")) return;
-      state.data.notes = state.data.notes.filter(note => note.id !== id);
-      saveData();
-      render();
-    });
+    button.addEventListener("click", () => deleteNote(button.getAttribute("data-delete-note")));
   });
 }
 
@@ -309,6 +394,7 @@ function startReading() {
 function finishReading() {
   clearInterval(state.timerId);
   state.timerId = null;
+  els.dateInput.value = todayInputValue();
   setTimerState("recording");
 }
 
@@ -321,6 +407,7 @@ function resetTimer() {
   clearInterval(state.timerId);
   state.timerId = null;
   state.elapsedSeconds = 0;
+  els.dateInput.value = "";
   els.pagesInput.value = "";
   els.memoInput.value = "";
   els.summaryInput.value = "";
@@ -344,7 +431,7 @@ function saveNote() {
     pages: Number(els.pagesInput.value || 0),
     memo,
     summary: els.summaryInput.value.trim(),
-    date: new Date().toISOString()
+    date: inputDateToISO(els.dateInput.value)
   });
 
   saveData();
@@ -352,7 +439,26 @@ function saveNote() {
   setView("bookshelf");
 }
 
-function addBook() {
+function openAddBookModal() {
+  state.editingBookId = null;
+  els.bookModalTitle.textContent = "本を追加";
+  els.bookTitleInput.value = "";
+  els.bookAuthorInput.value = "";
+  els.bookModal.showModal();
+}
+
+function openEditBookModal(bookId) {
+  const book = state.data.books.find(item => item.id === bookId);
+  if (!book) return;
+
+  state.editingBookId = bookId;
+  els.bookModalTitle.textContent = "本を編集";
+  els.bookTitleInput.value = book.title;
+  els.bookAuthorInput.value = book.author || "";
+  els.bookModal.showModal();
+}
+
+function saveBook() {
   const title = els.bookTitleInput.value.trim();
   const author = els.bookAuthorInput.value.trim();
 
@@ -361,14 +467,95 @@ function addBook() {
     return;
   }
 
-  const book = { id: createId(), title, author, createdAt: new Date().toISOString(), isFinished: false };
-  state.data.books.unshift(book);
-  state.selectedBookId = book.id;
+  if (state.editingBookId) {
+    const book = state.data.books.find(item => item.id === state.editingBookId);
+    if (!book) return;
+    book.title = title;
+    book.author = author;
+  } else {
+    const book = {
+      id: createId(),
+      title,
+      author,
+      createdAt: new Date().toISOString(),
+      isFinished: false
+    };
+    state.data.books.unshift(book);
+    state.selectedBookId = book.id;
+  }
+
+  state.editingBookId = null;
   saveData();
 
   els.bookTitleInput.value = "";
   els.bookAuthorInput.value = "";
   els.bookModal.close();
+  render();
+}
+
+function deleteBook(bookId) {
+  const book = state.data.books.find(item => item.id === bookId);
+  if (!book) return;
+
+  const ok = confirm(`「${book.title}」と、その感想ログをすべて削除しますか？`);
+  if (!ok) return;
+
+  state.data.books = state.data.books.filter(item => item.id !== bookId);
+  state.data.notes = state.data.notes.filter(note => note.bookId !== bookId);
+
+  if (state.selectedBookId === bookId) {
+    state.selectedBookId = state.data.books[0]?.id ?? null;
+  }
+
+  if (state.detailBookId === bookId) {
+    state.detailBookId = null;
+    setView("bookshelf");
+  }
+
+  saveData();
+  render();
+}
+
+function openEditNoteModal(noteId) {
+  const note = state.data.notes.find(item => item.id === noteId);
+  if (!note) return;
+
+  state.editingNoteId = noteId;
+  els.editNoteDateInput.value = isoToInputDate(note.date);
+  els.editNotePagesInput.value = Number(note.pages || 0);
+  els.editNoteMemoInput.value = note.memo || "";
+  els.editNoteSummaryInput.value = note.summary || "";
+  els.noteModal.showModal();
+}
+
+function saveEditedNote() {
+  const note = state.data.notes.find(item => item.id === state.editingNoteId);
+  if (!note) return;
+
+  const memo = els.editNoteMemoInput.value.trim();
+  if (!memo) {
+    alert("感想を入力してください。");
+    return;
+  }
+
+  note.date = inputDateToISO(els.editNoteDateInput.value);
+  note.pages = Number(els.editNotePagesInput.value || 0);
+  note.memo = memo;
+  note.summary = els.editNoteSummaryInput.value.trim();
+
+  state.editingNoteId = null;
+  saveData();
+  els.noteModal.close();
+  render();
+}
+
+function deleteNote(noteId) {
+  const note = state.data.notes.find(item => item.id === noteId);
+  if (!note) return;
+  if (!confirm("この感想ログを削除しますか？")) return;
+
+  state.data.notes = state.data.notes.filter(item => item.id !== noteId);
+  saveData();
   render();
 }
 
@@ -394,7 +581,9 @@ function importBackup(file) {
         return;
       }
       if (!confirm("現在のデータをバックアップ内容で置き換えますか？")) return;
+
       state.data = imported;
+      normalizeData();
       state.selectedBookId = state.data.books[0]?.id ?? null;
       state.detailBookId = null;
       saveData();
@@ -426,9 +615,18 @@ function bindEvents() {
   els.cancelButton.addEventListener("click", cancelReading);
   els.saveNoteButton.addEventListener("click", saveNote);
 
-  els.openBookModalButton.addEventListener("click", () => els.bookModal.showModal());
-  els.closeBookModalButton.addEventListener("click", () => els.bookModal.close());
-  els.addBookButton.addEventListener("click", addBook);
+  els.openAddBookModalButton.addEventListener("click", openAddBookModal);
+  els.closeBookModalButton.addEventListener("click", () => {
+    state.editingBookId = null;
+    els.bookModal.close();
+  });
+  els.saveBookButton.addEventListener("click", saveBook);
+
+  els.closeNoteModalButton.addEventListener("click", () => {
+    state.editingNoteId = null;
+    els.noteModal.close();
+  });
+  els.saveEditedNoteButton.addEventListener("click", saveEditedNote);
 
   els.backToBookshelfButton.addEventListener("click", () => setView("bookshelf"));
   els.exportButton.addEventListener("click", exportBackup);

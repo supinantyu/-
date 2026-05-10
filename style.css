@@ -10,6 +10,8 @@
   --blue: #2387d8;
   --blue-dark: #12609c;
   --blue-soft: #dff2ff;
+  --danger: #a51f1f;
+  --danger-soft: #ffe6e6;
   --shadow: 0 14px 34px rgba(26, 92, 142, 0.12);
   --radius: 24px;
 }
@@ -66,11 +68,7 @@ h2 { margin-bottom: 10px; letter-spacing: -0.03em; }
   backdrop-filter: blur(16px);
 }
 
-.kuu-card {
-  overflow: hidden;
-  margin-bottom: 16px;
-  text-align: center;
-}
+.kuu-card { overflow: hidden; margin-bottom: 16px; text-align: center; }
 
 .kuu-image {
   display: block;
@@ -137,7 +135,7 @@ select:focus, input:focus, textarea:focus {
 
 .button-grid { display: grid; gap: 10px; }
 
-.primary-button, .secondary-button, .ghost-button {
+.primary-button, .secondary-button, .ghost-button, .danger-button {
   border: 0;
   border-radius: 16px;
   min-height: 46px;
@@ -158,6 +156,11 @@ select:focus, input:focus, textarea:focus {
   color: var(--blue-dark);
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid var(--line);
+}
+
+.danger-button {
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .full { width: 100%; margin-top: 14px; }
@@ -188,9 +191,22 @@ select:focus, input:focus, textarea:focus {
   box-shadow: 0 10px 24px rgba(26, 92, 142, 0.08);
 }
 
-.book-card { cursor: pointer; }
 .book-card h3, .note-card h3 { margin: 0 0 6px; font-size: 18px; }
-.meta { margin: 0; color: var(--muted); font-size: 13px; }
+.meta { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+
+.card-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.note-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
 
 .note-body {
   margin: 10px 0 0;

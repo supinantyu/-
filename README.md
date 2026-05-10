@@ -1,37 +1,40 @@
-# クーの読書記録タイマー PWA版 v2
+# クーの読書記録タイマー PWA版 v3
 
 iPhoneだけでも扱いやすい、クーと一緒に読書時間と感想を記録するPWAです。
 
-## 重要：画像が表示されない場合
+## v3の追加機能
 
-`index.html` と同じ階層に `assets` フォルダを置き、その中に以下の画像を入れてください。
+- 本棚の本を編集
+- 本棚の本を削除
+- 本を削除すると紐づく感想ログも削除
+- 本棚カードに最終記録日を表示
+- 感想記録時に読書日を指定可能
+- 感想ログの編集
+- 感想ログの削除
+- JSONバックアップ
+- JSON復元
+
+## 上書き方法
+
+GitHubのリポジトリで以下のファイルをv3のものに置き換えてください。
+
+- `index.html`
+- `style.css`
+- `app.js`
+- `manifest.json`
+- `service-worker.js`
+- `README.md`
+
+画像が表示されない場合に備えて、以下もそのまま置いてください。
 
 - `assets/kuu_waiting.png`
 - `assets/kuu_reading.png`
 - `assets/kuu_recording.png`
+- `kuu_waiting.png`
+- `kuu_reading.png`
+- `kuu_recording.png`
 
-このv2では保険としてルート直下にも同名画像を入れています。  
-GitHubにアップロードするときは、ZIPの中身をそのまま全部アップロードしてください。
+## 注意
 
-## 機能
-
-- 読書タイマー
-- 待機中 / 読書中 / 記録中でクー画像を切り替え
-- 本の登録
-- 本ごとの感想ログ
-- 合計読書時間、合計ページ数、感想件数の表示
-- localStorageによるローカル保存
-- JSONバックアップ出力
-- JSON復元
-- PWA対応
-- オフラインキャッシュ対応
-
-## GitHub Pagesで公開する方法
-
-1. GitHubで新しいリポジトリを作成
-2. ZIPを解凍し、中身をすべてアップロード
-3. `index.html`、`style.css`、`app.js`、`manifest.json`、`service-worker.js` がルート直下にあることを確認
-4. `assets` フォルダがルート直下にあることを確認
-5. Settings → Pages → Branchを `main`、フォルダを `/root` にして保存
-6. 表示されたURLをSafariで開く
-7. 共有ボタンから「ホーム画面に追加」
+Service Workerのキャッシュ名を `kuu-reading-timer-v3` に変更しています。  
+GitHub Pagesに反映後、古い表示のままならSafariで再読み込みしてください。
