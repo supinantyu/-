@@ -2,9 +2,9 @@ const STORAGE_KEY = "kuuReadingTimerPwa.v3";
 const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
 
 const IMAGE_PATHS = {
-  waiting: ["./assets/kuu_waiting.png", "./kuu_waiting.png"],
-  reading: ["./assets/kuu_reading.png", "./kuu_reading.png"],
-  recording: ["./assets/kuu_recording.png", "./kuu_recording.png"]
+  waiting: ["./kuu_waiting.png"],
+  reading: ["./kuu_reading.png"],
+  recording: ["./kuu_recording.png"]
 };
 
 const state = {
