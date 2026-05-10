@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#dff2ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="クー読書">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>クーの読書記録タイマー</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Kuu Reading Timer</p>
+        <h1>クーの読書記録タイマー</h1>
+      </div>
+      <button id="installHelpButton" class="ghost-button" type="button">追加方法</button>
+    </header>
+
+    <main>
+      <section id="timerView" class="view active">
+        <article class="kuu-card">
+          <img id="kuuImage" class="kuu-image" src="./assets/kuu_waiting.png" alt="待機中のクー">
+          <p id="kuuMessage" class="kuu-message">準備ができたら始めましょう、ご主人様。</p>
+        </article>
+
+        <section class="panel">
+          <label class="label" for="bookSelect">読む本</label>
+          <div class="book-row">
+            <select id="bookSelect"></select>
+            <button id="openBookModalButton" class="secondary-button" type="button">本を追加</button>
+          </div>
+        </section>
+
+        <section class="timer-panel">
+          <p id="stateLabel" class="state-label">待機中</p>
+          <div id="timerDisplay" class="timer-display">00:00</div>
+          <div class="button-grid">
+            <button id="startButton" class="primary-button" type="button">読書開始</button>
+            <button id="finishButton" class="primary-button hidden" type="button">終了して記録へ</button>
+            <button id="cancelButton" class="secondary-button hidden" type="button">中止</button>
+          </div>
+        </section>
+
+        <section id="recordPanel" class="panel hidden">
+          <h2>読書記録</h2>
+          <p id="recordBookTitle" class="muted">本：未選択</p>
+          <p id="recordTime" class="muted">読書時間：0分</p>
+
+          <label class="label" for="pagesInput">読んだページ数</label>
+          <input id="pagesInput" inputmode="numeric" type="number" min="0" placeholder="例：24">
+
+          <label class="label" for="memoInput">感想</label>
+          <textarea id="memoInput" rows="7" placeholder="読んだ直後の気持ちを残しましょう。"></textarea>
+
+          <label class="label" for="summaryInput">要約メモ 任意</label>
+          <textarea id="summaryInput" rows="4" placeholder="AI要約機能を追加する前の仮欄です。今は手入力で保存できます。"></textarea>
+
+          <button id="saveNoteButton" class="primary-button full" type="button">感想を保存</button>
+        </section>
+      </section>
+
+      <section id="bookshelfView" class="view">
+        <section class="panel">
+          <div class="section-title-row">
+            <h2>本棚</h2>
+            <div class="small-actions">
+              <button id="importButton" class="secondary-button" type="button">復元</button>
+              <button id="exportButton" class="secondary-button" type="button">バックアップ</button>
+            </div>
+          </div>
+          <p class="muted">本ごとに読書時間と感想を見返せます。</p>
+          <input id="importFileInput" class="hidden" type="file" accept="application/json">
+        </section>
+        <div id="bookList" class="book-list"></div>
+      </section>
+
+      <section id="detailView" class="view">
+        <section class="panel">
+          <button id="backToBookshelfButton" class="ghost-button back-button" type="button">← 本棚へ戻る</button>
+          <h2 id="detailTitle">本のタイトル</h2>
+          <p id="detailAuthor" class="muted"></p>
+          <div class="stats-grid">
+            <div><span id="detailTotalMinutes">0</span><small>分</small></div>
+            <div><span id="detailTotalPages">0</span><small>ページ</small></div>
+            <div><span id="detailNoteCount">0</span><small>件</small></div>
+          </div>
+        </section>
+        <div id="noteList" class="note-list"></div>
+      </section>
+    </main>
+
+    <nav class="bottom-tabs" aria-label="メインメニュー">
+      <button id="timerTab" class="tab active" type="button"><span>⏱</span><span>タイマー</span></button>
+      <button id="bookshelfTab" class="tab" type="button"><span>📚</span><span>本棚</span></button>
+    </nav>
+  </div>
+
+  <dialog id="bookModal" class="modal">
+    <form method="dialog" class="modal-card">
+      <h2>本を追加</h2>
+      <label class="label" for="bookTitleInput">タイトル</label>
+      <input id="bookTitleInput" type="text" placeholder="例：変な家">
+      <label class="label" for="bookAuthorInput">著者 任意</label>
+      <input id="bookAuthorInput" type="text" placeholder="例：雨穴">
+      <div class="modal-actions">
+        <button id="closeBookModalButton" class="secondary-button" type="button">キャンセル</button>
+        <button id="addBookButton" class="primary-button" type="button">追加</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="installHelpModal" class="modal">
+    <form method="dialog" class="modal-card">
+      <h2>ホーム画面に追加</h2>
+      <p class="muted">iPhoneのSafariで開いたあと、共有ボタンから「ホーム画面に追加」を選ぶとアプリのように使えます。</p>
+      <button id="closeInstallHelpButton" class="primary-button full" type="button">閉じる</button>
+    </form>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>
