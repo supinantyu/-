@@ -1,27 +1,44 @@
-# クーの読書記録タイマー アイコン更新 v4
+# クーの読書記録タイマー PWA版 v5
 
-この上書き用パックは、ホーム画面アイコンをルート直下のファイルで使うための更新です。
+本棚に、ジャンル画像と⭐️5段階評価を追加した上書き版です。
 
-## 追加ファイル
-- `icon-192.png`
-- `icon-512.png`
-- `apple-touch-icon.png`
+## v5の追加機能
 
-## 上書きするファイル
+- 本ごとにジャンルを設定
+- 7種類のジャンル画像を本棚カードに表示
+  - ミステリー
+  - SF
+  - 青春
+  - 新書
+  - ホラー
+  - ラノベ
+  - ファンタジー
+- 本棚カード上で⭐️5段階評価を直感的に変更
+- 同じ星をもう一度押すと評価を解除
+- 本の追加・編集画面でもジャンルと評価を設定
+- 本の詳細画面にもジャンル画像と評価を表示
+- 既存データは自動でv5形式に補正
+
+## 上書き方法
+
+このZIPの中身をGitHubリポジトリのルート直下にすべて上書きしてください。
+
+特に必要なファイル：
+
 - `index.html`
+- `style.css`
 - `app.js`
 - `manifest.json`
 - `service-worker.js`
+- `genre-mystery.png`
+- `genre-sf.png`
+- `genre-youth.png`
+- `genre-shinsho.png`
+- `genre-horror.png`
+- `genre-lightnovel.png`
+- `genre-fantasy.png`
 
-## 変更内容
-- PWAアイコンを `assets` ではなく **ルート直下** から読み込むように変更
-- iPhone用の `apple-touch-icon.png` を追加
-- 初期表示のクー画像もルート直下 `kuu_waiting.png` を参照
-- Service Worker のキャッシュ名を `kuu-reading-timer-v4` に更新
+## 注意
 
-## 反映方法
-1. このZIPを解凍
-2. 中のファイルをGitHubリポジトリの同名ファイルに上書き
-3. `icon-192.png` `icon-512.png` `apple-touch-icon.png` もルート直下にアップロード
-4. GitHub Pagesの反映後、Safariでページを開き直す
-5. 既にホーム画面に追加済みなら一度削除し、もう一度「ホーム画面に追加」する
+Service Workerのキャッシュ名を `kuu-reading-timer-v5` に変更しています。  
+反映直後に古い画面が出る場合は、Safariで再読み込み、またはホーム画面のPWAを削除して追加し直してください。

@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>クーの読書記録タイマー</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -51,19 +51,14 @@
           <h2>読書記録</h2>
           <p id="recordBookTitle" class="muted">本：未選択</p>
           <p id="recordTime" class="muted">読書時間：0分</p>
-
           <label class="label" for="dateInput">読書日</label>
           <input id="dateInput" type="date">
-
           <label class="label" for="pagesInput">読んだページ数</label>
           <input id="pagesInput" inputmode="numeric" type="number" min="0" placeholder="例：24">
-
           <label class="label" for="memoInput">感想</label>
           <textarea id="memoInput" rows="7" placeholder="読んだ直後の気持ちを残しましょう。"></textarea>
-
           <label class="label" for="summaryInput">要約メモ 任意</label>
           <textarea id="summaryInput" rows="4" placeholder="AI要約機能を追加する前の仮欄です。今は手入力で保存できます。"></textarea>
-
           <button id="saveNoteButton" class="primary-button full" type="button">感想を保存</button>
         </section>
       </section>
@@ -77,7 +72,7 @@
               <button id="exportButton" class="secondary-button" type="button">バックアップ</button>
             </div>
           </div>
-          <p class="muted">本ごとに読書時間と感想を見返せます。</p>
+          <p class="muted">本ごとに読書時間・感想・ジャンル・評価を見返せます。</p>
           <input id="importFileInput" class="hidden" type="file" accept="application/json">
         </section>
         <div id="bookList" class="book-list"></div>
@@ -86,8 +81,15 @@
       <section id="detailView" class="view">
         <section class="panel">
           <button id="backToBookshelfButton" class="ghost-button back-button" type="button">← 本棚へ戻る</button>
-          <h2 id="detailTitle">本のタイトル</h2>
-          <p id="detailAuthor" class="muted"></p>
+          <div class="detail-header">
+            <img id="detailGenreImage" class="detail-genre-image" src="./genre-mystery.png" alt="">
+            <div>
+              <h2 id="detailTitle">本のタイトル</h2>
+              <p id="detailAuthor" class="muted"></p>
+              <p id="detailGenre" class="muted"></p>
+              <div id="detailRating" class="rating-row"></div>
+            </div>
+          </div>
           <div class="stats-grid">
             <div><span id="detailTotalMinutes">0</span><small>分</small></div>
             <div><span id="detailTotalPages">0</span><small>ページ</small></div>
@@ -111,6 +113,18 @@
       <input id="bookTitleInput" type="text" placeholder="例：変な家">
       <label class="label" for="bookAuthorInput">著者 任意</label>
       <input id="bookAuthorInput" type="text" placeholder="例：雨穴">
+      <label class="label" for="bookGenreInput">ジャンル</label>
+      <select id="bookGenreInput">
+        <option value="mystery">ミステリー</option>
+        <option value="sf">SF</option>
+        <option value="youth">青春</option>
+        <option value="shinsho">新書</option>
+        <option value="horror">ホラー</option>
+        <option value="lightnovel">ラノベ</option>
+        <option value="fantasy">ファンタジー</option>
+      </select>
+      <label class="label">評価</label>
+      <div id="bookRatingInput" class="rating-row rating-input"></div>
       <div class="modal-actions">
         <button id="closeBookModalButton" class="secondary-button" type="button">キャンセル</button>
         <button id="saveBookButton" class="primary-button" type="button">保存</button>
@@ -123,16 +137,12 @@
       <h2>感想ログを編集</h2>
       <label class="label" for="editNoteDateInput">読書日</label>
       <input id="editNoteDateInput" type="date">
-
       <label class="label" for="editNotePagesInput">読んだページ数</label>
       <input id="editNotePagesInput" inputmode="numeric" type="number" min="0">
-
       <label class="label" for="editNoteMemoInput">感想</label>
       <textarea id="editNoteMemoInput" rows="7"></textarea>
-
       <label class="label" for="editNoteSummaryInput">要約メモ 任意</label>
       <textarea id="editNoteSummaryInput" rows="4"></textarea>
-
       <div class="modal-actions">
         <button id="closeNoteModalButton" class="secondary-button" type="button">キャンセル</button>
         <button id="saveEditedNoteButton" class="primary-button" type="button">保存</button>

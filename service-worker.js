@@ -1,4 +1,4 @@
-const CACHE_NAME = "kuu-reading-timer-v4";
+const CACHE_NAME = "kuu-reading-timer-v5";
 
 const ASSETS = [
   "./",
@@ -6,12 +6,18 @@ const ASSETS = [
   "./style.css",
   "./app.js",
   "./manifest.json",
-  "./apple-touch-icon.png",
   "./icon-192.png",
   "./icon-512.png",
   "./kuu_waiting.png",
   "./kuu_reading.png",
-  "./kuu_recording.png"
+  "./kuu_recording.png",
+  "./genre-mystery.png",
+  "./genre-sf.png",
+  "./genre-youth.png",
+  "./genre-shinsho.png",
+  "./genre-horror.png",
+  "./genre-lightnovel.png",
+  "./genre-fantasy.png"
 ];
 
 self.addEventListener("install", event => {

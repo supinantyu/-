@@ -1,10 +1,20 @@
-const STORAGE_KEY = "kuuReadingTimerPwa.v3";
-const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
+const STORAGE_KEY = "kuuReadingTimerPwa.v5";
+const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
 
 const IMAGE_PATHS = {
   waiting: ["./kuu_waiting.png"],
   reading: ["./kuu_reading.png"],
   recording: ["./kuu_recording.png"]
+};
+
+const GENRE_MASTER = {
+  mystery: { label: "ミステリー", image: "./genre-mystery.png" },
+  sf: { label: "SF", image: "./genre-sf.png" },
+  youth: { label: "青春", image: "./genre-youth.png" },
+  shinsho: { label: "新書", image: "./genre-shinsho.png" },
+  horror: { label: "ホラー", image: "./genre-horror.png" },
+  lightnovel: { label: "ラノベ", image: "./genre-lightnovel.png" },
+  fantasy: { label: "ファンタジー", image: "./genre-fantasy.png" }
 };
 
 const state = {
@@ -16,6 +26,7 @@ const state = {
   detailBookId: null,
   editingBookId: null,
   editingNoteId: null,
+  tempBookRating: 0,
   imageFallbackIndex: { waiting: 0, reading: 0, recording: 0 }
 };
 
@@ -48,6 +59,8 @@ const els = {
   saveBookButton: document.querySelector("#saveBookButton"),
   bookTitleInput: document.querySelector("#bookTitleInput"),
   bookAuthorInput: document.querySelector("#bookAuthorInput"),
+  bookGenreInput: document.querySelector("#bookGenreInput"),
+  bookRatingInput: document.querySelector("#bookRatingInput"),
   noteModal: document.querySelector("#noteModal"),
   closeNoteModalButton: document.querySelector("#closeNoteModalButton"),
   saveEditedNoteButton: document.querySelector("#saveEditedNoteButton"),
@@ -59,6 +72,9 @@ const els = {
   noteList: document.querySelector("#noteList"),
   detailTitle: document.querySelector("#detailTitle"),
   detailAuthor: document.querySelector("#detailAuthor"),
+  detailGenre: document.querySelector("#detailGenre"),
+  detailGenreImage: document.querySelector("#detailGenreImage"),
+  detailRating: document.querySelector("#detailRating"),
   detailTotalMinutes: document.querySelector("#detailTotalMinutes"),
   detailTotalPages: document.querySelector("#detailTotalPages"),
   detailNoteCount: document.querySelector("#detailNoteCount"),
@@ -108,22 +124,26 @@ function formatDate(isoValue) {
   return date.toLocaleDateString("ja-JP", { year: "numeric", month: "short", day: "numeric" });
 }
 
+function getGenreInfo(genre) {
+  return GENRE_MASTER[genre] ?? GENRE_MASTER.mystery;
+}
+
 function loadData() {
   let raw = localStorage.getItem(STORAGE_KEY);
-
   if (!raw) {
     for (const key of OLD_STORAGE_KEYS) {
       raw = localStorage.getItem(key);
       if (raw) break;
     }
   }
-
   if (!raw) {
     state.data = {
       books: [{
         id: createId(),
         title: "サンプル本",
         author: "クー",
+        genre: "mystery",
+        rating: 0,
         createdAt: new Date().toISOString(),
         isFinished: false
       }],
@@ -149,6 +169,8 @@ function normalizeData() {
     id: book.id || createId(),
     title: book.title || "無題の本",
     author: book.author || "",
+    genre: GENRE_MASTER[book.genre] ? book.genre : "mystery",
+    rating: Math.max(0, Math.min(5, Number(book.rating || 0))),
     createdAt: book.createdAt || new Date().toISOString(),
     isFinished: Boolean(book.isFinished)
   }));
@@ -213,31 +235,16 @@ function render() {
   if (state.detailBookId) renderDetail();
 }
 
-function currentImagePath(kind) {
-  return IMAGE_PATHS[kind][state.imageFallbackIndex[kind] || 0];
-}
-
 function renderKuu() {
   const config = stateConfig[state.timerState];
   els.kuuImage.style.opacity = "0.2";
   setTimeout(() => {
-    els.kuuImage.src = currentImagePath(state.timerState);
+    els.kuuImage.src = IMAGE_PATHS[state.timerState][0];
     els.kuuImage.alt = config.alt;
     els.kuuImage.style.opacity = "1";
   }, 70);
   els.kuuMessage.textContent = config.message;
 }
-
-els.kuuImage.addEventListener("error", () => {
-  const kind = state.timerState;
-  const next = (state.imageFallbackIndex[kind] || 0) + 1;
-  if (next < IMAGE_PATHS[kind].length) {
-    state.imageFallbackIndex[kind] = next;
-    els.kuuImage.src = currentImagePath(kind);
-  } else {
-    els.kuuImage.alt = "クー画像が読み込めませんでした";
-  }
-});
 
 function renderBookSelect() {
   const current = state.selectedBookId;
@@ -288,6 +295,51 @@ function renderRecordPanel() {
   }
 }
 
+function renderStars(book) {
+  const rating = Math.max(0, Math.min(5, Number(book.rating || 0)));
+  return `
+    <div class="rating-row" aria-label="評価 ${rating}点">
+      ${[1, 2, 3, 4, 5].map(value => `
+        <button class="star-button ${value > rating ? "empty" : ""}" data-rate-book="${book.id}" data-rating="${value}" type="button" aria-label="${value}点">★</button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderRatingInput(rating) {
+  const safeRating = Math.max(0, Math.min(5, Number(rating || 0)));
+  els.bookRatingInput.innerHTML = [1, 2, 3, 4, 5].map(value => `
+    <button class="star-button ${value > safeRating ? "empty" : ""}" data-modal-rating="${value}" type="button" aria-label="${value}点">★</button>
+  `).join("");
+
+  els.bookRatingInput.querySelectorAll("[data-modal-rating]").forEach(button => {
+    button.addEventListener("click", () => {
+      const ratingValue = Number(button.getAttribute("data-modal-rating"));
+      state.tempBookRating = state.tempBookRating === ratingValue ? 0 : ratingValue;
+      renderRatingInput(state.tempBookRating);
+    });
+  });
+}
+
+function updateBookRating(bookId, rating) {
+  const book = state.data.books.find(item => item.id === bookId);
+  if (!book) return;
+  book.rating = Number(book.rating || 0) === rating ? 0 : rating;
+  saveData();
+  render();
+}
+
+function bindRatingButtons(container) {
+  container.querySelectorAll("[data-rate-book]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.stopPropagation();
+      const bookId = button.getAttribute("data-rate-book");
+      const rating = Number(button.getAttribute("data-rating"));
+      updateBookRating(bookId, rating);
+    });
+  });
+}
+
 function renderBookshelf() {
   els.bookList.innerHTML = "";
 
@@ -301,14 +353,22 @@ function renderBookshelf() {
     const totalMinutes = notes.reduce((sum, note) => sum + Number(note.minutes || 0), 0);
     const totalPages = notes.reduce((sum, note) => sum + Number(note.pages || 0), 0);
     const lastDateLabel = notes[0] ? formatDate(notes[0].date) : "記録なし";
+    const genreInfo = getGenreInfo(book.genre);
 
     const card = document.createElement("article");
     card.className = "book-card";
     card.innerHTML = `
-      <h3>${escapeHtml(book.title)}</h3>
-      ${book.author ? `<p class="meta">${escapeHtml(book.author)}</p>` : ""}
-      <p class="meta">合計 ${totalMinutes}分 / ${totalPages}ページ / 感想 ${notes.length}件</p>
-      <p class="meta">最終記録日：${lastDateLabel}</p>
+      <div class="book-card-top">
+        <img class="genre-cover" src="${genreInfo.image}" alt="${genreInfo.label}">
+        <div class="book-card-main">
+          <h3>${escapeHtml(book.title)}</h3>
+          ${book.author ? `<p class="meta">${escapeHtml(book.author)}</p>` : ""}
+          <p class="meta">ジャンル：${genreInfo.label}</p>
+          ${renderStars(book)}
+          <p class="meta">合計 ${totalMinutes}分 / ${totalPages}ページ / 感想 ${notes.length}件</p>
+          <p class="meta">最終記録日：${lastDateLabel}</p>
+        </div>
+      </div>
       <div class="card-actions">
         <button class="secondary-button" data-open-book="${book.id}" type="button">開く</button>
         <button class="secondary-button" data-edit-book="${book.id}" type="button">編集</button>
@@ -321,10 +381,9 @@ function renderBookshelf() {
       renderDetail();
       setView("detail");
     });
-
     card.querySelector("[data-edit-book]").addEventListener("click", () => openEditBookModal(book.id));
     card.querySelector("[data-delete-book]").addEventListener("click", () => deleteBook(book.id));
-
+    bindRatingButtons(card);
     els.bookList.append(card);
   }
 }
@@ -339,9 +398,15 @@ function renderDetail() {
   const notes = notesForBook(book.id);
   const totalMinutes = notes.reduce((sum, note) => sum + Number(note.minutes || 0), 0);
   const totalPages = notes.reduce((sum, note) => sum + Number(note.pages || 0), 0);
+  const genreInfo = getGenreInfo(book.genre);
 
   els.detailTitle.textContent = book.title;
   els.detailAuthor.textContent = book.author || "";
+  els.detailGenre.textContent = `ジャンル：${genreInfo.label}`;
+  els.detailGenreImage.src = genreInfo.image;
+  els.detailGenreImage.alt = genreInfo.label;
+  els.detailRating.innerHTML = renderStars(book);
+  bindRatingButtons(els.detailRating);
   els.detailTotalMinutes.textContent = totalMinutes;
   els.detailTotalPages.textContent = totalPages;
   els.detailNoteCount.textContent = notes.length;
@@ -417,13 +482,11 @@ function resetTimer() {
 function saveNote() {
   const book = selectedBook();
   if (!book) return;
-
   const memo = els.memoInput.value.trim();
   if (!memo) {
     alert("感想を入力してください。");
     return;
   }
-
   state.data.notes.unshift({
     id: createId(),
     bookId: book.id,
@@ -433,7 +496,6 @@ function saveNote() {
     summary: els.summaryInput.value.trim(),
     date: inputDateToISO(els.dateInput.value)
   });
-
   saveData();
   resetTimer();
   setView("bookshelf");
@@ -441,26 +503,32 @@ function saveNote() {
 
 function openAddBookModal() {
   state.editingBookId = null;
+  state.tempBookRating = 0;
   els.bookModalTitle.textContent = "本を追加";
   els.bookTitleInput.value = "";
   els.bookAuthorInput.value = "";
+  els.bookGenreInput.value = "mystery";
+  renderRatingInput(state.tempBookRating);
   els.bookModal.showModal();
 }
 
 function openEditBookModal(bookId) {
   const book = state.data.books.find(item => item.id === bookId);
   if (!book) return;
-
   state.editingBookId = bookId;
+  state.tempBookRating = Number(book.rating || 0);
   els.bookModalTitle.textContent = "本を編集";
   els.bookTitleInput.value = book.title;
   els.bookAuthorInput.value = book.author || "";
+  els.bookGenreInput.value = GENRE_MASTER[book.genre] ? book.genre : "mystery";
+  renderRatingInput(state.tempBookRating);
   els.bookModal.showModal();
 }
 
 function saveBook() {
   const title = els.bookTitleInput.value.trim();
   const author = els.bookAuthorInput.value.trim();
+  const genre = els.bookGenreInput.value;
 
   if (!title) {
     alert("タイトルを入力してください。");
@@ -472,11 +540,15 @@ function saveBook() {
     if (!book) return;
     book.title = title;
     book.author = author;
+    book.genre = GENRE_MASTER[genre] ? genre : "mystery";
+    book.rating = Math.max(0, Math.min(5, Number(state.tempBookRating || 0)));
   } else {
     const book = {
       id: createId(),
       title,
       author,
+      genre: GENRE_MASTER[genre] ? genre : "mystery",
+      rating: Math.max(0, Math.min(5, Number(state.tempBookRating || 0))),
       createdAt: new Date().toISOString(),
       isFinished: false
     };
@@ -485,8 +557,8 @@ function saveBook() {
   }
 
   state.editingBookId = null;
+  state.tempBookRating = 0;
   saveData();
-
   els.bookTitleInput.value = "";
   els.bookAuthorInput.value = "";
   els.bookModal.close();
@@ -496,9 +568,7 @@ function saveBook() {
 function deleteBook(bookId) {
   const book = state.data.books.find(item => item.id === bookId);
   if (!book) return;
-
-  const ok = confirm(`「${book.title}」と、その感想ログをすべて削除しますか？`);
-  if (!ok) return;
+  if (!confirm(`「${book.title}」と、その感想ログをすべて削除しますか？`)) return;
 
   state.data.books = state.data.books.filter(item => item.id !== bookId);
   state.data.notes = state.data.notes.filter(note => note.bookId !== bookId);
@@ -506,12 +576,10 @@ function deleteBook(bookId) {
   if (state.selectedBookId === bookId) {
     state.selectedBookId = state.data.books[0]?.id ?? null;
   }
-
   if (state.detailBookId === bookId) {
     state.detailBookId = null;
     setView("bookshelf");
   }
-
   saveData();
   render();
 }
@@ -519,7 +587,6 @@ function deleteBook(bookId) {
 function openEditNoteModal(noteId) {
   const note = state.data.notes.find(item => item.id === noteId);
   if (!note) return;
-
   state.editingNoteId = noteId;
   els.editNoteDateInput.value = isoToInputDate(note.date);
   els.editNotePagesInput.value = Number(note.pages || 0);
@@ -531,18 +598,15 @@ function openEditNoteModal(noteId) {
 function saveEditedNote() {
   const note = state.data.notes.find(item => item.id === state.editingNoteId);
   if (!note) return;
-
   const memo = els.editNoteMemoInput.value.trim();
   if (!memo) {
     alert("感想を入力してください。");
     return;
   }
-
   note.date = inputDateToISO(els.editNoteDateInput.value);
   note.pages = Number(els.editNotePagesInput.value || 0);
   note.memo = memo;
   note.summary = els.editNoteSummaryInput.value.trim();
-
   state.editingNoteId = null;
   saveData();
   els.noteModal.close();
@@ -550,10 +614,7 @@ function saveEditedNote() {
 }
 
 function deleteNote(noteId) {
-  const note = state.data.notes.find(item => item.id === noteId);
-  if (!note) return;
   if (!confirm("この感想ログを削除しますか？")) return;
-
   state.data.notes = state.data.notes.filter(item => item.id !== noteId);
   saveData();
   render();
@@ -581,7 +642,6 @@ function importBackup(file) {
         return;
       }
       if (!confirm("現在のデータをバックアップ内容で置き換えますか？")) return;
-
       state.data = imported;
       normalizeData();
       state.selectedBookId = state.data.books[0]?.id ?? null;
@@ -608,7 +668,6 @@ function escapeHtml(value) {
 function bindEvents() {
   els.timerTab.addEventListener("click", () => setView("timer"));
   els.bookshelfTab.addEventListener("click", () => setView("bookshelf"));
-
   els.bookSelect.addEventListener("change", event => { state.selectedBookId = event.target.value; });
   els.startButton.addEventListener("click", startReading);
   els.finishButton.addEventListener("click", finishReading);
@@ -618,6 +677,7 @@ function bindEvents() {
   els.openAddBookModalButton.addEventListener("click", openAddBookModal);
   els.closeBookModalButton.addEventListener("click", () => {
     state.editingBookId = null;
+    state.tempBookRating = 0;
     els.bookModal.close();
   });
   els.saveBookButton.addEventListener("click", saveBook);
@@ -630,7 +690,6 @@ function bindEvents() {
 
   els.backToBookshelfButton.addEventListener("click", () => setView("bookshelf"));
   els.exportButton.addEventListener("click", exportBackup);
-
   els.importButton.addEventListener("click", () => els.importFileInput.click());
   els.importFileInput.addEventListener("change", event => {
     const file = event.target.files?.[0];
