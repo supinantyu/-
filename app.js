@@ -135,7 +135,7 @@ const GENRE_MASTER = {
   Cloudflare Workersを作ったあと、下のURLを自分のWorkers URLに差し替えてください。
   例: const AI_SUMMARY_ENDPOINT = "https://kuu-reading-summary.xxxxx.workers.dev";
 */
-const AI_SUMMARY_ENDPOINT = "";
+const AI_SUMMARY_ENDPOINT = "https://kuu-reading-summary.hourensou85.workers.dev";
 
 const READING_TAGS = [
   "怖い",
