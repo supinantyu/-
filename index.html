@@ -86,6 +86,57 @@
           <p class="muted">本ごとに読書時間・感想・ジャンル・評価・読後タグを見返せます。</p>
           <input id="importFileInput" class="hidden" type="file" accept="application/json">
         </section>
+
+        <section class="panel bookshelf-filter-panel">
+          <h2>本棚整理</h2>
+
+          <label class="label" for="bookSearchInput">検索</label>
+          <input id="bookSearchInput" type="search" placeholder="タイトル・著者・感想から検索">
+
+          <div class="filter-grid">
+            <div>
+              <label class="label" for="genreFilterSelect">ジャンル</label>
+              <select id="genreFilterSelect">
+                <option value="all">すべて</option>
+              </select>
+            </div>
+            <div>
+              <label class="label" for="statusFilterSelect">ステータス</label>
+              <select id="statusFilterSelect">
+                <option value="all">すべて</option>
+                <option value="completed">読了</option>
+                <option value="dropped">投了</option>
+                <option value="none">未設定</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="filter-grid">
+            <div>
+              <label class="label" for="tagFilterSelect">読後タグ</label>
+              <select id="tagFilterSelect">
+                <option value="all">すべて</option>
+              </select>
+            </div>
+            <div>
+              <label class="label" for="sortSelect">並び替え</label>
+              <select id="sortSelect">
+                <option value="recent">最近読んだ順</option>
+                <option value="created">追加した順</option>
+                <option value="rating">評価が高い順</option>
+                <option value="time">読書時間が長い順</option>
+                <option value="pages">ページ数が多い順</option>
+                <option value="title">タイトル順</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="filter-actions">
+            <p id="bookFilterResult" class="meta">0冊表示中</p>
+            <button id="resetBookFiltersButton" class="secondary-button" type="button">絞り込み解除</button>
+          </div>
+        </section>
+
         <div id="bookList" class="book-list"></div>
       </section>
 

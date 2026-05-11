@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kuuReadingTimerPwa.v8";
-const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v7", "kuuReadingTimerPwa.v6", "kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
+const STORAGE_KEY = "kuuReadingTimerPwa.v10";
+const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v9", "kuuReadingTimerPwa.v8", "kuuReadingTimerPwa.v7", "kuuReadingTimerPwa.v6", "kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
 
 const IMAGE_PATHS = {
   waiting: ["./kuu_waiting.png"],
@@ -51,6 +51,13 @@ const state = {
   timerStartedAt: null,
   timerId: null,
   wakeLock: null,
+  bookshelfFilters: {
+    query: "",
+    genre: "all",
+    status: "all",
+    tag: "all",
+    sort: "recent"
+  },
   detailBookId: null,
   editingBookId: null,
   editingNoteId: null,
@@ -97,6 +104,13 @@ const els = {
   editNoteMemoInput: document.querySelector("#editNoteMemoInput"),
   editNoteSummaryInput: document.querySelector("#editNoteSummaryInput"),
   bookList: document.querySelector("#bookList"),
+  bookSearchInput: document.querySelector("#bookSearchInput"),
+  genreFilterSelect: document.querySelector("#genreFilterSelect"),
+  statusFilterSelect: document.querySelector("#statusFilterSelect"),
+  tagFilterSelect: document.querySelector("#tagFilterSelect"),
+  sortSelect: document.querySelector("#sortSelect"),
+  resetBookFiltersButton: document.querySelector("#resetBookFiltersButton"),
+  bookFilterResult: document.querySelector("#bookFilterResult"),
   noteList: document.querySelector("#noteList"),
   detailTitle: document.querySelector("#detailTitle"),
   detailAuthor: document.querySelector("#detailAuthor"),
@@ -462,18 +476,142 @@ function renderTagControls(book) {
 }
 
 
+
+function bookStats(bookId) {
+  const notes = notesForBook(bookId);
+  return {
+    notes,
+    totalMinutes: notes.reduce((sum, note) => sum + Number(note.minutes || 0), 0),
+    totalPages: notes.reduce((sum, note) => sum + Number(note.pages || 0), 0),
+    latestTime: notes.reduce((latest, note) => {
+      const raw = note.date || note.createdAt || "";
+      const time = new Date(raw).getTime();
+      return Number.isFinite(time) && time > latest ? time : latest;
+    }, 0)
+  };
+}
+
+function populateBookshelfFilters() {
+  if (!els.genreFilterSelect || !els.tagFilterSelect) return;
+
+  const previousGenre = state.bookshelfFilters.genre;
+  const previousTag = state.bookshelfFilters.tag;
+
+  els.genreFilterSelect.innerHTML = [
+    `<option value="all">すべて</option>`,
+    ...Object.entries(GENRE_MASTER).map(([value, info]) => `<option value="${value}">${info.label}</option>`)
+  ].join("");
+  els.genreFilterSelect.value = previousGenre;
+
+  const usedTags = [...new Set(state.data.books.flatMap(book => Array.isArray(book.tags) ? book.tags : []))];
+  const selectableTags = READING_TAGS.filter(tag => usedTags.includes(tag));
+  els.tagFilterSelect.innerHTML = [
+    `<option value="all">すべて</option>`,
+    ...selectableTags.map(tag => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`)
+  ].join("");
+
+  if (previousTag !== "all" && !selectableTags.includes(previousTag)) {
+    state.bookshelfFilters.tag = "all";
+  }
+  els.tagFilterSelect.value = state.bookshelfFilters.tag;
+}
+
+function syncFilterInputs() {
+  if (!els.bookSearchInput) return;
+  els.bookSearchInput.value = state.bookshelfFilters.query;
+  els.genreFilterSelect.value = state.bookshelfFilters.genre;
+  els.statusFilterSelect.value = state.bookshelfFilters.status;
+  els.tagFilterSelect.value = state.bookshelfFilters.tag;
+  els.sortSelect.value = state.bookshelfFilters.sort;
+}
+
+function matchesBookFilters(book) {
+  const filters = state.bookshelfFilters;
+  const query = filters.query.trim().toLowerCase();
+
+  if (filters.genre !== "all" && book.genre !== filters.genre) return false;
+  if (filters.status === "none" && book.status) return false;
+  if (filters.status !== "all" && filters.status !== "none" && book.status !== filters.status) return false;
+  if (filters.tag !== "all" && !(Array.isArray(book.tags) && book.tags.includes(filters.tag))) return false;
+
+  if (!query) return true;
+
+  const notesText = notesForBook(book.id).map(note => `${note.memo || ""} ${note.summary || ""}`).join(" ");
+  const searchable = [
+    book.title || "",
+    book.author || "",
+    getGenreInfo(book.genre).label || "",
+    STATUS_MASTER[book.status]?.label || "",
+    Array.isArray(book.tags) ? book.tags.join(" ") : "",
+    notesText
+  ].join(" ").toLowerCase();
+
+  return searchable.includes(query);
+}
+
+function sortedBooks(books) {
+  const withStats = books.map(book => ({ book, stats: bookStats(book.id) }));
+  const sort = state.bookshelfFilters.sort;
+
+  withStats.sort((a, b) => {
+    if (sort === "rating") return Number(b.book.rating || 0) - Number(a.book.rating || 0);
+    if (sort === "time") return b.stats.totalMinutes - a.stats.totalMinutes;
+    if (sort === "pages") return b.stats.totalPages - a.stats.totalPages;
+    if (sort === "title") return String(a.book.title || "").localeCompare(String(b.book.title || ""), "ja");
+    if (sort === "created") return new Date(b.book.createdAt || 0) - new Date(a.book.createdAt || 0);
+
+    const recentDiff = b.stats.latestTime - a.stats.latestTime;
+    if (recentDiff !== 0) return recentDiff;
+    return new Date(b.book.createdAt || 0) - new Date(a.book.createdAt || 0);
+  });
+
+  return withStats.map(item => item.book);
+}
+
+function filteredBooks() {
+  return sortedBooks(state.data.books.filter(matchesBookFilters));
+}
+
+function resetBookFilters() {
+  state.bookshelfFilters = {
+    query: "",
+    genre: "all",
+    status: "all",
+    tag: "all",
+    sort: "recent"
+  };
+  populateBookshelfFilters();
+  syncFilterInputs();
+  renderBookshelf();
+}
+
+
 function renderBookshelf() {
+  populateBookshelfFilters();
+  syncFilterInputs();
+
+  const books = filteredBooks();
   els.bookList.innerHTML = "";
+
+  if (els.bookFilterResult) {
+    els.bookFilterResult.textContent = `${books.length}冊表示中 / 全${state.data.books.length}冊`;
+  }
 
   if (state.data.books.length === 0) {
     els.bookList.innerHTML = `<article class="book-card"><h3>本がありません</h3><p class="meta">タイマー画面から本を追加できます。</p></article>`;
     return;
   }
 
-  for (const book of state.data.books) {
-    const notes = notesForBook(book.id);
-    const totalMinutes = notes.reduce((sum, note) => sum + Number(note.minutes || 0), 0);
-    const totalPages = notes.reduce((sum, note) => sum + Number(note.pages || 0), 0);
+  if (books.length === 0) {
+    els.bookList.innerHTML = `<article class="book-card"><h3>該当する本がありません</h3><p class="meta">検索条件を変えるか、絞り込みを解除してください。</p></article>`;
+    return;
+  }
+
+  for (const book of books) {
+    const stats = bookStats(book.id);
+    const notes = stats.notes;
+    const totalMinutes = stats.totalMinutes;
+    const totalPages = stats.totalPages;
     const lastDateLabel = notes[0] ? formatDate(notes[0].date) : "記録なし";
     const genreInfo = getGenreInfo(book.genre);
 
@@ -969,6 +1107,28 @@ function bindEvents() {
     if (file) importBackup(file);
     event.target.value = "";
   });
+
+  els.bookSearchInput.addEventListener("input", () => {
+    state.bookshelfFilters.query = els.bookSearchInput.value;
+    renderBookshelf();
+  });
+  els.genreFilterSelect.addEventListener("change", () => {
+    state.bookshelfFilters.genre = els.genreFilterSelect.value;
+    renderBookshelf();
+  });
+  els.statusFilterSelect.addEventListener("change", () => {
+    state.bookshelfFilters.status = els.statusFilterSelect.value;
+    renderBookshelf();
+  });
+  els.tagFilterSelect.addEventListener("change", () => {
+    state.bookshelfFilters.tag = els.tagFilterSelect.value;
+    renderBookshelf();
+  });
+  els.sortSelect.addEventListener("change", () => {
+    state.bookshelfFilters.sort = els.sortSelect.value;
+    renderBookshelf();
+  });
+  els.resetBookFiltersButton.addEventListener("click", resetBookFilters);
 
   els.installHelpButton.addEventListener("click", () => els.installHelpModal.showModal());
   els.closeInstallHelpButton.addEventListener("click", () => els.installHelpModal.close());
