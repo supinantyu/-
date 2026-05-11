@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kuuReadingTimerPwa.v6";
-const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
+const STORAGE_KEY = "kuuReadingTimerPwa.v7";
+const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v6", "kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
 
 const IMAGE_PATHS = {
   waiting: ["./kuu_waiting.png"],
@@ -21,7 +21,27 @@ const GENRE_MASTER = {
   Cloudflare Workersを作ったあと、下のURLを自分のWorkers URLに差し替えてください。
   例: const AI_SUMMARY_ENDPOINT = "https://kuu-reading-summary.xxxxx.workers.dev";
 */
-const AI_SUMMARY_ENDPOINT = "https://kuu-reading-summary.hourensou85.workers.dev/";
+const AI_SUMMARY_ENDPOINT = "";
+
+const READING_TAGS = [
+  "怖い",
+  "泣ける",
+  "爽快",
+  "難しい",
+  "どんでん返し",
+  "文章が好き",
+  "キャラが好き",
+  "世界観が好き",
+  "考察したい",
+  "余韻がある",
+  "読みやすい",
+  "重い"
+];
+
+const STATUS_MASTER = {
+  completed: { label: "読了", className: "completed" },
+  dropped: { label: "投了", className: "dropped" }
+};
 
 const state = {
   data: { books: [], notes: [] },
@@ -78,8 +98,12 @@ const els = {
   detailTitle: document.querySelector("#detailTitle"),
   detailAuthor: document.querySelector("#detailAuthor"),
   detailGenre: document.querySelector("#detailGenre"),
+  detailStatus: document.querySelector("#detailStatus"),
   detailGenreImage: document.querySelector("#detailGenreImage"),
   detailRating: document.querySelector("#detailRating"),
+  markCompletedButton: document.querySelector("#markCompletedButton"),
+  markDroppedButton: document.querySelector("#markDroppedButton"),
+  tagButtonList: document.querySelector("#tagButtonList"),
   detailTotalMinutes: document.querySelector("#detailTotalMinutes"),
   detailTotalPages: document.querySelector("#detailTotalPages"),
   detailNoteCount: document.querySelector("#detailNoteCount"),
@@ -153,6 +177,9 @@ function loadData() {
         author: "クー",
         genre: "mystery",
         rating: 0,
+        status: "",
+        statusUpdatedAt: "",
+        tags: [],
         aiSummary: "",
         aiSummaryUpdatedAt: "",
         createdAt: new Date().toISOString(),
@@ -182,6 +209,9 @@ function normalizeData() {
     author: book.author || "",
     genre: GENRE_MASTER[book.genre] ? book.genre : "mystery",
     rating: Math.max(0, Math.min(5, Number(book.rating || 0))),
+    status: ["completed", "dropped"].includes(book.status) ? book.status : "",
+    statusUpdatedAt: book.statusUpdatedAt || "",
+    tags: Array.isArray(book.tags) ? book.tags.filter(tag => READING_TAGS.includes(tag)) : [],
     aiSummary: book.aiSummary || "",
     aiSummaryUpdatedAt: book.aiSummaryUpdatedAt || "",
     createdAt: book.createdAt || new Date().toISOString(),
@@ -351,6 +381,64 @@ function bindRatingButtons(container) {
   });
 }
 
+
+function statusBadgeHtml(status) {
+  const info = STATUS_MASTER[status];
+  if (!info) return "";
+  return `<span class="status-badge ${info.className}">${info.label}</span>`;
+}
+
+function tagListHtml(tags) {
+  if (!Array.isArray(tags) || tags.length === 0) return "";
+  return `<div class="tag-list">${tags.map(tag => `<span class="tag-chip">${escapeHtml(tag)}</span>`).join("")}</div>`;
+}
+
+function setBookStatus(status) {
+  const book = state.data.books.find(item => item.id === state.detailBookId);
+  if (!book) return;
+
+  book.status = book.status === status ? "" : status;
+  book.statusUpdatedAt = book.status ? new Date().toISOString() : "";
+  saveData();
+  render();
+}
+
+function toggleBookTag(tag) {
+  const book = state.data.books.find(item => item.id === state.detailBookId);
+  if (!book) return;
+
+  if (!Array.isArray(book.tags)) book.tags = [];
+  if (book.tags.includes(tag)) {
+    book.tags = book.tags.filter(item => item !== tag);
+  } else {
+    book.tags.push(tag);
+  }
+  saveData();
+  render();
+}
+
+function renderStatusControls(book) {
+  els.detailStatus.innerHTML = book.status ? `ステータス：${statusBadgeHtml(book.status)}` : "";
+  els.markCompletedButton.classList.toggle("active", book.status === "completed");
+  els.markDroppedButton.classList.toggle("active", book.status === "dropped");
+}
+
+function renderTagControls(book) {
+  const tags = Array.isArray(book.tags) ? book.tags : [];
+  els.tagButtonList.innerHTML = READING_TAGS.map(tag => `
+    <button
+      class="tag-button ${tags.includes(tag) ? "active" : ""}"
+      data-toggle-tag="${escapeHtml(tag)}"
+      type="button"
+    >${escapeHtml(tag)}</button>
+  `).join("");
+
+  els.tagButtonList.querySelectorAll("[data-toggle-tag]").forEach(button => {
+    button.addEventListener("click", () => toggleBookTag(button.getAttribute("data-toggle-tag")));
+  });
+}
+
+
 function renderBookshelf() {
   els.bookList.innerHTML = "";
 
@@ -367,7 +455,7 @@ function renderBookshelf() {
     const genreInfo = getGenreInfo(book.genre);
 
     const card = document.createElement("article");
-    card.className = "book-card";
+    card.className = `book-card ${book.status === "completed" ? "completed-card" : ""} ${book.status === "dropped" ? "dropped-card" : ""}`;
     card.innerHTML = `
       <div class="book-card-top">
         <img class="genre-cover" src="${genreInfo.image}" alt="${genreInfo.label}">
@@ -375,7 +463,9 @@ function renderBookshelf() {
           <h3>${escapeHtml(book.title)}</h3>
           ${book.author ? `<p class="meta">${escapeHtml(book.author)}</p>` : ""}
           <p class="meta">ジャンル：${genreInfo.label}</p>
+          ${book.status ? `<p class="meta">ステータス：${statusBadgeHtml(book.status)}</p>` : ""}
           ${renderStars(book)}
+          ${tagListHtml(book.tags)}
           ${book.aiSummary ? `<p class="meta">AI総合感想：作成済み</p>` : ""}
           <p class="meta">合計 ${totalMinutes}分 / ${totalPages}ページ / 感想 ${notes.length}件</p>
           <p class="meta">最終記録日：${lastDateLabel}</p>
@@ -415,6 +505,8 @@ function renderDetail() {
   els.detailTitle.textContent = book.title;
   els.detailAuthor.textContent = book.author || "";
   els.detailGenre.textContent = `ジャンル：${genreInfo.label}`;
+  renderStatusControls(book);
+  renderTagControls(book);
   els.detailGenreImage.src = genreInfo.image;
   els.detailGenreImage.alt = genreInfo.label;
   els.detailRating.innerHTML = renderStars(book);
@@ -469,6 +561,8 @@ function buildAiSummaryPayload(book, notes) {
     title: book.title,
     author: book.author || "",
     genre: genreInfo.label,
+    status: STATUS_MASTER[book.status]?.label || "",
+    tags: Array.isArray(book.tags) ? book.tags : [],
     rating: Number(book.rating || 0),
     totalMinutes: notes.reduce((sum, note) => sum + Number(note.minutes || 0), 0),
     totalPages: notes.reduce((sum, note) => sum + Number(note.pages || 0), 0),
@@ -647,6 +741,9 @@ function saveBook() {
       author,
       genre: GENRE_MASTER[genre] ? genre : "mystery",
       rating: Math.max(0, Math.min(5, Number(state.tempBookRating || 0))),
+      status: "",
+      statusUpdatedAt: "",
+      tags: [],
       aiSummary: "",
       aiSummaryUpdatedAt: "",
       createdAt: new Date().toISOString(),
@@ -794,6 +891,8 @@ function bindEvents() {
   els.saveEditedNoteButton.addEventListener("click", saveEditedNote);
 
   els.backToBookshelfButton.addEventListener("click", () => setView("bookshelf"));
+  els.markCompletedButton.addEventListener("click", () => setBookStatus("completed"));
+  els.markDroppedButton.addEventListener("click", () => setBookStatus("dropped"));
   els.generateAiSummaryButton.addEventListener("click", generateAiSummary);
   els.exportButton.addEventListener("click", exportBackup);
   els.importButton.addEventListener("click", () => els.importFileInput.click());

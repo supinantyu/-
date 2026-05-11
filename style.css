@@ -249,3 +249,115 @@ textarea { resize: vertical; line-height: 1.55; }
   .genre-cover { width: 76px; height: 76px; border-radius: 16px; }
   .star-button { font-size: 22px; }
 }
+
+:root {
+  --completed: #1f9d55;
+  --completed-soft: #e5f8ee;
+  --dropped: #e07818;
+  --dropped-soft: #fff0df;
+}
+
+.book-card.completed-card {
+  border-color: rgba(31, 157, 85, 0.35);
+  background: linear-gradient(180deg, #fff, var(--completed-soft));
+}
+
+.book-card.dropped-card {
+  border-color: rgba(224, 120, 24, 0.35);
+  background: linear-gradient(180deg, #fff, var(--dropped-soft));
+}
+
+.status-line {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.status-badge.completed {
+  color: var(--completed);
+  background: var(--completed-soft);
+}
+
+.status-badge.dropped {
+  color: var(--dropped);
+  background: var(--dropped-soft);
+}
+
+.status-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.status-button {
+  border: 0;
+  min-height: 50px;
+  border-radius: 18px;
+  padding: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.completed-button {
+  color: var(--completed);
+  background: var(--completed-soft);
+}
+
+.dropped-button {
+  color: var(--dropped);
+  background: var(--dropped-soft);
+}
+
+.completed-button.active {
+  color: #fff;
+  background: var(--completed);
+  box-shadow: 0 10px 22px rgba(31, 157, 85, 0.22);
+}
+
+.dropped-button.active {
+  color: #fff;
+  background: var(--dropped);
+  box-shadow: 0 10px 22px rgba(224, 120, 24, 0.22);
+}
+
+.tag-list,
+.tag-button-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tag-chip,
+.tag-button {
+  border: 1px solid rgba(35, 135, 216, 0.16);
+  border-radius: 999px;
+  background: rgba(223, 242, 255, 0.75);
+  color: var(--blue-dark);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.tag-button {
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.tag-button.active {
+  color: #fff;
+  background: var(--blue);
+  border-color: var(--blue);
+  box-shadow: 0 8px 18px rgba(35, 135, 216, 0.16);
+}

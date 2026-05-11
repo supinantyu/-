@@ -1,44 +1,36 @@
-# クーの読書記録タイマー PWA版 v6 AI総合感想
+# クーの読書記録タイマー PWA版 v7
 
-v6では、本ごとの全感想ログをAIに渡して「AI総合感想」を生成する画面を追加しました。
+v7では、読書ステータスと読後タグを追加しました。
 
-## v6追加機能
+## v7追加機能
 
-- 本の詳細画面に「AI総合感想」パネルを追加
-- 「AIで生成」ボタンを追加
-- その本に紐づく全ての感想ログをまとめて送信
-- AIの生成結果を `book.aiSummary` に保存
-- 最終生成日を `book.aiSummaryUpdatedAt` に保存
-- 感想がない本ではAI生成ボタンを無効化
-- 既存のv5データをv6形式へ自動補正
+- 本ごとの読書ステータスを追加
+  - 読了
+  - 投了
+- 本の詳細画面下部に緑色の「読了」ボタン、オレンジ色の「投了」ボタンを追加
+- 読了ボタンを押すと、本棚カードが緑系に色分け
+- 投了ボタンを押すと、本棚カードがオレンジ系に色分け
+- 同じステータスボタンをもう一度押すと解除
+- 読後タグを追加
+  - 怖い
+  - 泣ける
+  - 爽快
+  - 難しい
+  - どんでん返し
+  - 文章が好き
+  - キャラが好き
+  - 世界観が好き
+  - 考察したい
+  - 余韻がある
+  - 読みやすい
+  - 重い
+- 本棚カードと詳細画面にタグ表示
+- 既存のv6データをv7形式に自動補正
 
-## 重要
+## 注意
 
-PWAだけではAI要約は動きません。  
-`app.js` の `AI_SUMMARY_ENDPOINT` にCloudflare WorkersのURLを入れる必要があります。
+AI総合感想機能はv6の仕様を引き継いでいます。  
+`app.js` の `AI_SUMMARY_ENDPOINT` が空の場合は、Cloudflare WorkersのURLを設定してください。
 
-```js
-const AI_SUMMARY_ENDPOINT = "https://あなたのworker名.あなたのサブドメイン.workers.dev";
-```
-
-## Cloudflare Workers側で必要な環境変数
-
-- `OPENAI_API_KEY`
-- 任意: `OPENAI_MODEL`
-  - 例: `gpt-4.1-mini`
-- 任意: `ALLOWED_ORIGIN`
-  - GitHub PagesのURLを入れると安全性が上がります
-  - 例: `https://ユーザー名.github.io`
-
-## 反映手順
-
-1. Cloudflare Workersを作る
-2. `cloudflare-worker-ai-summary.js` の中身を貼る
-3. Workersの環境変数に `OPENAI_API_KEY` を設定
-4. Workersをデプロイ
-5. 発行されたWorkers URLをコピー
-6. `app.js` の `AI_SUMMARY_ENDPOINT` に貼る
-7. このv6ファイル一式をGitHubに上書き
-8. GitHub Pagesを開き直す
-
-Service Workerのキャッシュ名は `kuu-reading-timer-v6` です。
+Service Workerのキャッシュ名は `kuu-reading-timer-v7` です。  
+反映直後に古い画面が出る場合は、Safariで再読み込み、またはホーム画面PWAを削除して追加し直してください。

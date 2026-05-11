@@ -1,4 +1,4 @@
-const CACHE_NAME = "kuu-reading-timer-v6";
+const CACHE_NAME = "kuu-reading-timer-v7";
 
 const ASSETS = [
   "./",

@@ -77,7 +77,7 @@
               <button id="exportButton" class="secondary-button" type="button">バックアップ</button>
             </div>
           </div>
-          <p class="muted">本ごとに読書時間・感想・ジャンル・評価を見返せます。</p>
+          <p class="muted">本ごとに読書時間・感想・ジャンル・評価・読後タグを見返せます。</p>
           <input id="importFileInput" class="hidden" type="file" accept="application/json">
         </section>
         <div id="bookList" class="book-list"></div>
@@ -92,6 +92,7 @@
               <h2 id="detailTitle">本のタイトル</h2>
               <p id="detailAuthor" class="muted"></p>
               <p id="detailGenre" class="muted"></p>
+              <p id="detailStatus" class="status-line"></p>
               <div id="detailRating" class="rating-row"></div>
             </div>
           </div>
@@ -100,6 +101,21 @@
             <div><span id="detailTotalPages">0</span><small>ページ</small></div>
             <div><span id="detailNoteCount">0</span><small>件</small></div>
           </div>
+        </section>
+
+        <section class="panel status-panel">
+          <h2>読書ステータス</h2>
+          <p class="muted">読み切った本は読了、途中でやめた本は投了にできます。もう一度押すと解除できます。</p>
+          <div class="status-actions">
+            <button id="markCompletedButton" class="status-button completed-button" type="button">読了</button>
+            <button id="markDroppedButton" class="status-button dropped-button" type="button">投了</button>
+          </div>
+        </section>
+
+        <section class="panel tag-panel">
+          <h2>読後タグ</h2>
+          <p class="muted">この本を読んだ印象をタグで残せます。複数選択できます。</p>
+          <div id="tagButtonList" class="tag-button-list"></div>
         </section>
 
         <section class="panel ai-panel">
