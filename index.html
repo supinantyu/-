@@ -61,8 +61,14 @@
           <label class="label" for="memoInput">感想</label>
           <textarea id="memoInput" rows="7" placeholder="読んだ直後の気持ちを残しましょう。"></textarea>
 
-          <label class="label" for="summaryInput">要約メモ 任意</label>
-          <textarea id="summaryInput" rows="4" placeholder="今は手入力で保存できます。"></textarea>
+          <div class="record-status-panel">
+            <p class="label">読書ステータス 任意</p>
+            <p class="muted mini-help">この記録と一緒に、本を読了・投了にできます。もう一度押すと解除できます。</p>
+            <div class="status-actions">
+              <button id="recordCompletedButton" class="status-button completed-button" type="button">読了</button>
+              <button id="recordDroppedButton" class="status-button dropped-button" type="button">投了</button>
+            </div>
+          </div>
 
           <button id="saveNoteButton" class="primary-button full" type="button">感想を保存</button>
         </section>
@@ -103,6 +109,18 @@
           </div>
         </section>
 
+        <section class="panel ai-panel">
+          <div class="section-title-row">
+            <h2>AI総合感想</h2>
+            <button id="generateAiSummaryButton" class="primary-button compact-button" type="button">AIで生成</button>
+          </div>
+          <p class="muted">この本に残した全ての感想を参照して、要約兼総合感想を作ります。</p>
+          <div id="aiSummaryBox" class="ai-summary-box muted">まだAI総合感想はありません。</div>
+          <p id="aiSummaryUpdatedAt" class="meta"></p>
+        </section>
+
+        <div id="noteList" class="note-list"></div>
+
         <section class="panel status-panel">
           <h2>読書ステータス</h2>
           <p class="muted">読み切った本は読了、途中でやめた本は投了にできます。もう一度押すと解除できます。</p>
@@ -118,17 +136,6 @@
           <div id="tagButtonList" class="tag-button-list"></div>
         </section>
 
-        <section class="panel ai-panel">
-          <div class="section-title-row">
-            <h2>AI総合感想</h2>
-            <button id="generateAiSummaryButton" class="primary-button compact-button" type="button">AIで生成</button>
-          </div>
-          <p class="muted">この本に残した全ての感想を参照して、要約兼総合感想を作ります。</p>
-          <div id="aiSummaryBox" class="ai-summary-box muted">まだAI総合感想はありません。</div>
-          <p id="aiSummaryUpdatedAt" class="meta"></p>
-        </section>
-
-        <div id="noteList" class="note-list"></div>
       </section>
     </main>
 

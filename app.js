@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kuuReadingTimerPwa.v7";
-const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v6", "kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
+const STORAGE_KEY = "kuuReadingTimerPwa.v8";
+const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v7", "kuuReadingTimerPwa.v6", "kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
 
 const IMAGE_PATHS = {
   waiting: ["./kuu_waiting.png"],
@@ -48,7 +48,9 @@ const state = {
   timerState: "waiting",
   selectedBookId: null,
   elapsedSeconds: 0,
+  timerStartedAt: null,
   timerId: null,
+  wakeLock: null,
   detailBookId: null,
   editingBookId: null,
   editingNoteId: null,
@@ -76,7 +78,8 @@ const els = {
   dateInput: document.querySelector("#dateInput"),
   pagesInput: document.querySelector("#pagesInput"),
   memoInput: document.querySelector("#memoInput"),
-  summaryInput: document.querySelector("#summaryInput"),
+  recordCompletedButton: document.querySelector("#recordCompletedButton"),
+  recordDroppedButton: document.querySelector("#recordDroppedButton"),
   bookModal: document.querySelector("#bookModal"),
   bookModalTitle: document.querySelector("#bookModalTitle"),
   openAddBookModalButton: document.querySelector("#openAddBookModalButton"),
@@ -319,7 +322,13 @@ function renderBookSelect() {
   }
 }
 
+function updateElapsedFromClock() {
+  if (state.timerState !== "reading" || !state.timerStartedAt) return;
+  state.elapsedSeconds = Math.max(0, Math.floor((Date.now() - state.timerStartedAt) / 1000));
+}
+
 function renderTimer() {
+  updateElapsedFromClock();
   els.timerDisplay.textContent = formatTime(state.elapsedSeconds);
   els.stateLabel.textContent = stateConfig[state.timerState].label;
   els.startButton.classList.toggle("hidden", state.timerState !== "waiting");
@@ -334,6 +343,10 @@ function renderRecordPanel() {
   els.recordBookTitle.textContent = `本：${book ? book.title : "未選択"}`;
   els.recordTime.textContent = `読書時間：${readingMinutes()}分`;
   if (isRecording && !els.dateInput.value) els.dateInput.value = todayInputValue();
+  if (book && els.recordCompletedButton && els.recordDroppedButton) {
+    els.recordCompletedButton.classList.toggle("active", book.status === "completed");
+    els.recordDroppedButton.classList.toggle("active", book.status === "dropped");
+  }
 }
 
 function renderStars(book) {
@@ -395,6 +408,16 @@ function tagListHtml(tags) {
 
 function setBookStatus(status) {
   const book = state.data.books.find(item => item.id === state.detailBookId);
+  if (!book) return;
+
+  book.status = book.status === status ? "" : status;
+  book.statusUpdatedAt = book.status ? new Date().toISOString() : "";
+  saveData();
+  render();
+}
+
+function setSelectedBookStatus(status) {
+  const book = selectedBook();
   if (!book) return;
 
   book.status = book.status === status ? "" : status;
@@ -630,23 +653,65 @@ async function generateAiSummary() {
   }
 }
 
+
+async function requestWakeLock() {
+  if (!("wakeLock" in navigator)) return;
+
+  try {
+    state.wakeLock = await navigator.wakeLock.request("screen");
+    state.wakeLock.addEventListener("release", () => {
+      state.wakeLock = null;
+    });
+  } catch (error) {
+    console.warn("Wake Lock request failed:", error);
+  }
+}
+
+async function releaseWakeLock() {
+  if (!state.wakeLock) return;
+
+  try {
+    await state.wakeLock.release();
+  } catch (error) {
+    console.warn("Wake Lock release failed:", error);
+  } finally {
+    state.wakeLock = null;
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && state.timerState === "reading") {
+    updateElapsedFromClock();
+    renderTimer();
+    requestWakeLock();
+  }
+});
+
+
 function startReading() {
   if (!selectedBook()) {
     alert("先に本を追加してください。");
     return;
   }
+
   state.elapsedSeconds = 0;
+  state.timerStartedAt = Date.now();
   setTimerState("reading");
+  requestWakeLock();
+
   clearInterval(state.timerId);
   state.timerId = setInterval(() => {
-    state.elapsedSeconds += 1;
+    updateElapsedFromClock();
     renderTimer();
   }, 1000);
 }
 
 function finishReading() {
+  updateElapsedFromClock();
   clearInterval(state.timerId);
   state.timerId = null;
+  state.timerStartedAt = null;
+  releaseWakeLock();
   els.dateInput.value = todayInputValue();
   setTimerState("recording");
 }
@@ -659,11 +724,12 @@ function cancelReading() {
 function resetTimer() {
   clearInterval(state.timerId);
   state.timerId = null;
+  state.timerStartedAt = null;
+  releaseWakeLock();
   state.elapsedSeconds = 0;
   els.dateInput.value = "";
   els.pagesInput.value = "";
   els.memoInput.value = "";
-  els.summaryInput.value = "";
   setTimerState("waiting");
 }
 
@@ -683,7 +749,7 @@ function saveNote() {
     minutes: readingMinutes(),
     pages: Number(els.pagesInput.value || 0),
     memo,
-    summary: els.summaryInput.value.trim(),
+    summary: "",
     date: inputDateToISO(els.dateInput.value)
   });
 
@@ -875,6 +941,8 @@ function bindEvents() {
   els.finishButton.addEventListener("click", finishReading);
   els.cancelButton.addEventListener("click", cancelReading);
   els.saveNoteButton.addEventListener("click", saveNote);
+  els.recordCompletedButton.addEventListener("click", () => setSelectedBookStatus("completed"));
+  els.recordDroppedButton.addEventListener("click", () => setSelectedBookStatus("dropped"));
 
   els.openAddBookModalButton.addEventListener("click", openAddBookModal);
   els.closeBookModalButton.addEventListener("click", () => {
@@ -905,6 +973,10 @@ function bindEvents() {
   els.installHelpButton.addEventListener("click", () => els.installHelpModal.showModal());
   els.closeInstallHelpButton.addEventListener("click", () => els.installHelpModal.close());
 }
+
+window.addEventListener("pagehide", () => {
+  releaseWakeLock();
+});
 
 function registerServiceWorker() {
   if ("serviceWorker" in navigator) {

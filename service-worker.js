@@ -1,4 +1,4 @@
-const CACHE_NAME = "kuu-reading-timer-v7";
+const CACHE_NAME = "kuu-reading-timer-v9";
 
 const ASSETS = [
   "./",
@@ -17,7 +17,8 @@ const ASSETS = [
   "./genre-shinsho.png",
   "./genre-horror.png",
   "./genre-lightnovel.png",
-  "./genre-fantasy.png"
+  "./genre-fantasy.png",
+  "./bg-common.png"
 ];
 
 self.addEventListener("install", event => {
