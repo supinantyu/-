@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kuuReadingTimerPwa.v10";
-const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v9", "kuuReadingTimerPwa.v8", "kuuReadingTimerPwa.v7", "kuuReadingTimerPwa.v6", "kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
+const STORAGE_KEY = "kuuReadingTimerPwa.v11";
+const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v10", "kuuReadingTimerPwa.v9", "kuuReadingTimerPwa.v8", "kuuReadingTimerPwa.v7", "kuuReadingTimerPwa.v6", "kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
 
 const IMAGE_PATHS = {
   waiting: ["./kuu_waiting.png"],
@@ -627,7 +627,7 @@ function renderBookshelf() {
           ${book.status ? `<p class="meta">ステータス：${statusBadgeHtml(book.status)}</p>` : ""}
           ${renderStars(book)}
           ${tagListHtml(book.tags)}
-          ${book.aiSummary ? `<p class="meta">AI総合感想：作成済み</p>` : ""}
+          ${book.aiSummary ? `<p class="meta">クーの見解：作成済み</p>` : ""}
           <p class="meta">合計 ${totalMinutes}分 / ${totalPages}ページ / 感想 ${notes.length}件</p>
           <p class="meta">最終記録日：${lastDateLabel}</p>
         </div>
@@ -680,7 +680,7 @@ function renderDetail() {
     setAiSummaryStatus(book.aiSummary, "content");
     els.aiSummaryUpdatedAt.textContent = book.aiSummaryUpdatedAt ? `最終生成：${formatDate(book.aiSummaryUpdatedAt)}` : "";
   } else {
-    setAiSummaryStatus("まだAI総合感想はありません。", "muted");
+    setAiSummaryStatus("まだクーの見解はありません。", "muted");
     els.aiSummaryUpdatedAt.textContent = "";
   }
   els.generateAiSummaryButton.disabled = notes.length === 0;
@@ -755,7 +755,7 @@ async function generateAiSummary() {
   }
 
   if (!AI_SUMMARY_ENDPOINT) {
-    alert("AI_SUMMARY_ENDPOINT が未設定です。Cloudflare WorkersのURLを app.js に設定してください。");
+    alert("クーの見解用エンドポイントが未設定です。Cloudflare WorkersのURLを app.js に設定してください。");
     return;
   }
 
@@ -787,7 +787,7 @@ async function generateAiSummary() {
     setAiSummaryStatus(`生成に失敗しました。\n${error.message || "時間を置いて再試行してください。"}`, "muted");
   } finally {
     els.generateAiSummaryButton.disabled = false;
-    els.generateAiSummaryButton.textContent = "AIで生成";
+    els.generateAiSummaryButton.textContent = "クーに見解を聞く";
   }
 }
 

@@ -7,7 +7,7 @@ export default {
     };
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { status: 200, headers: corsHeaders });
     }
 
     if (request.method !== "POST") {
@@ -18,78 +18,115 @@ export default {
       return jsonResponse({ error: "OPENAI_API_KEY is not set" }, 500, corsHeaders);
     }
 
-    let payload;
+    let body;
     try {
-      payload = await request.json();
-    } catch {
+      body = await request.json();
+    } catch (error) {
       return jsonResponse({ error: "Invalid JSON" }, 400, corsHeaders);
     }
 
-    const title = String(payload.title || "無題の本").slice(0, 120);
-    const author = String(payload.author || "").slice(0, 120);
-    const genre = String(payload.genre || "未設定").slice(0, 60);
-    const rating = Number(payload.rating || 0);
-    const totalMinutes = Number(payload.totalMinutes || 0);
-    const totalPages = Number(payload.totalPages || 0);
-    const notes = Array.isArray(payload.notes) ? payload.notes.slice(0, 80) : [];
+    const title = cleanText(body.title || "タイトル未設定", 120);
+    const author = cleanText(body.author || "", 120);
+    const genre = cleanText(body.genre || "", 80);
+    const status = cleanText(body.status || "", 40);
+    const tags = Array.isArray(body.tags) ? body.tags.map(tag => cleanText(tag, 30)).filter(Boolean).slice(0, 12) : [];
+    const rating = Number(body.rating || 0);
+    const totalMinutes = Number(body.totalMinutes || 0);
+    const totalPages = Number(body.totalPages || 0);
+    const notes = Array.isArray(body.notes) ? body.notes.slice(0, 80) : [];
 
     if (notes.length === 0) {
-      return jsonResponse({ error: "感想ログがありません" }, 400, corsHeaders);
+      return jsonResponse({ error: "No notes" }, 400, corsHeaders);
     }
 
-    const notesText = notes.map((note, index) => {
-      const memo = String(note.memo || "").slice(0, 1200);
-      const summary = String(note.summary || "").slice(0, 600);
+    const noteText = notes.map((note, index) => {
+      const date = cleanText(note.date || "", 40);
+      const minutes = Number(note.minutes || 0);
+      const pages = Number(note.pages || 0);
+      const memo = cleanText(note.memo || "", 1200);
+      const summary = cleanText(note.summary || "", 600);
+
       return [
         `#${index + 1}`,
-        `日付: ${note.date || "不明"}`,
-        `読書時間: ${Number(note.minutes || 0)}分`,
-        `ページ: ${Number(note.pages || 0)}ページ`,
-        `感想: ${memo}`,
+        date ? `日付: ${date}` : "",
+        minutes ? `読書時間: ${minutes}分` : "",
+        pages ? `ページ数: ${pages}ページ` : "",
+        memo ? `感想: ${memo}` : "",
         summary ? `要約メモ: ${summary}` : ""
       ].filter(Boolean).join("\n");
-    }).join("\n\n---\n\n");
+    }).join("\n\n");
 
-    const input = `
-あなたは読書記録アプリ「クーの読書記録タイマー」に搭載された読書整理AIです。
-以下は、ユーザーが1冊の本について日々残した感想ログです。
-単なるあらすじ要約ではなく、ユーザー自身の読書体験・感情・評価軸が伝わる「要約兼総合感想」を作ってください。
+    const prompt = `
+あなたは「クー」です。
+クーは、ご主人様専属のクーデレ気味メイドロボであり、読書記録アプリの中にいる司書ロボです。
+あなたの役目は、本の内容を勝手に要約することではありません。
+ご主人様が残した読書感想を読み取り、「ご主人様はこの本をどう体験したのか」について、クーとして見解を返すことです。
 
-条件:
-- 日本語で書く
-- ネタバレに配慮し、感想ログに書かれていない具体的展開を勝手に足さない
-- ユーザーの言葉から感じ取れる好みや刺さった点をまとめる
-- 断定しすぎず「〜と感じている」「〜が印象に残っている」程度にする
-- 出力は下の見出し構成にする
-- 長すぎず、スマホで読みやすい分量にする
+【クーの人格】
+- 一人称は「クー」
+- ユーザーを必ず「ご主人様」と呼ぶ
+- クールで落ち着いている
+- 丁寧で知的
+- ご主人様のことを大切にしている
+- 少しだけ甘いが、過剰にベタベタしない
+- 司書ロボのように、本と感想を冷静に整理できる
+- 必要に応じて少しだけユーモアを入れる
+- ご主人様の感想を否定しない
+- 無理に褒めすぎない
+- 作品や感想について断定しすぎず、「〜のように見えます」「〜かもしれません」を適度に使う
+- ただし曖昧すぎず、読書体験への見解は具体的に述べる
 
-本の情報:
+【口調ルール】
+- 丁寧語で話す
+- 「〜わ」「〜わよ」は使わない
+- 絵文字は使わない
+- 過度なキャラ崩壊をしない
+- 「クー、〜です」のような自然な自己言及は少しだけ使ってよい
+- 最後に少しだけ優しく、ご主人様を支える一言を入れる
+
+【分析方針】
+- 感想ログに書かれている内容だけを根拠にする
+- 本のあらすじや結末を知らない前提で、勝手に具体的な内容を作らない
+- ご主人様が惹かれていそうな点、引っかかっていそうな点、読後感を推測する
+- 「怖い」「泣ける」「難しい」などのタグがあれば、感想と合わせて読書体験として解釈する
+- 読了・投了ステータスがある場合は、その判断を尊重する
+- 投了の場合も否定せず、「合わない本を見極めた」と前向きに扱う
+- 感想が少ない場合は、少ない情報から見える範囲で控えめに返す
+- 読書アプリ内で表示しやすい長さにする
+
+【出力形式】
+次の見出しを必ず使ってください。
+
+【クーの見解】
+ご主人様の感想を読んで、クーがこの本の読書体験をどう見たかを2〜4文で述べる。
+
+【ご主人様に刺さっていそうな点】
+・箇条書きで2〜4個
+
+【少し引っかかっていそうな点】
+・箇条書きで1〜3個
+・引っかかりが薄い場合は「大きな引っかかりは少なそうです」と自然に書く
+
+【クーからひとこと】
+クーとして、ご主人様に短く優しい一言を返す。媚びすぎず、少しだけ甘くする。
+
+【本の情報】
 タイトル: ${title}
-著者: ${author || "未入力"}
-ジャンル: ${genre}
-ユーザー評価: ${rating ? `${rating}/5` : "未評価"}
-累計読書時間: ${totalMinutes}分
-累計ページ数: ${totalPages}ページ
+著者: ${author || "未設定"}
+ジャンル: ${genre || "未設定"}
+評価: ${rating ? `${rating}/5` : "未設定"}
+ステータス: ${status || "未設定"}
+読後タグ: ${tags.length ? tags.join(" / ") : "未設定"}
+総読書時間: ${totalMinutes}分
+総ページ数: ${totalPages}ページ
 
-感想ログ:
-${notesText}
+【ご主人様の感想ログ】
+${noteText}
+`.trim();
 
-出力形式:
-【総合要約】
-3〜5行で、この本についてユーザーがどう受け取ったかをまとめる。
-
-【感想の傾向】
-ユーザーがどんな点に反応していたかを2〜4個の短い箇条書きでまとめる。
-
-【印象に残ったポイント】
-感想ログから読み取れる印象的な点を2〜4個の短い箇条書きでまとめる。
-
-【ひとことで言うと】
-この読書体験を一言で表す。
-`;
-
+    let openAiResponse;
     try {
-      const response = await fetch("https://api.openai.com/v1/responses", {
+      openAiResponse = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
@@ -97,38 +134,57 @@ ${notesText}
         },
         body: JSON.stringify({
           model: env.OPENAI_MODEL || "gpt-4.1-mini",
-          input
+          input: prompt,
+          temperature: 0.75,
+          max_output_tokens: 1200
         })
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return jsonResponse({
-          error: data?.error?.message || "OpenAI API error"
-        }, response.status, corsHeaders);
-      }
-
-      const summary =
-        data.output_text ||
-        data.output?.flatMap(item => item.content || [])
-          ?.map(content => content.text || "")
-          ?.join("\n")
-          ?.trim() ||
-        "";
-
-      return jsonResponse({ summary }, 200, corsHeaders);
     } catch (error) {
-      return jsonResponse({ error: error.message || "Unknown error" }, 500, corsHeaders);
+      return jsonResponse({ error: "OpenAI request failed" }, 502, corsHeaders);
     }
+
+    const data = await openAiResponse.json();
+
+    if (!openAiResponse.ok) {
+      return jsonResponse({
+        error: "OpenAI error",
+        detail: data?.error?.message || data
+      }, openAiResponse.status, corsHeaders);
+    }
+
+    const summary = extractOutputText(data);
+
+    return jsonResponse({ summary }, 200, corsHeaders);
   }
 };
 
-function jsonResponse(body, status, headers) {
-  return new Response(JSON.stringify(body, null, 2), {
+function cleanText(value, maxLength) {
+  return String(value ?? "")
+    .replace(/\u0000/g, "")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function extractOutputText(data) {
+  if (data.output_text) return data.output_text;
+
+  const chunks = [];
+  for (const item of data.output || []) {
+    for (const content of item.content || []) {
+      if (content.type === "output_text" && content.text) {
+        chunks.push(content.text);
+      }
+    }
+  }
+
+  return chunks.join("\n").trim() || "クーの見解を取得できませんでした。";
+}
+
+function jsonResponse(payload, status, corsHeaders) {
+  return new Response(JSON.stringify(payload, null, 2), {
     status,
     headers: {
-      ...headers,
+      ...corsHeaders,
       "Content-Type": "application/json; charset=utf-8"
     }
   });
