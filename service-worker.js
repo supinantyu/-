@@ -1,4 +1,4 @@
-const CACHE_NAME = "kuu-reading-timer-v11";
+const CACHE_NAME = "kuu-reading-timer-v14";
 
 const ASSETS = [
   "./",
@@ -9,6 +9,17 @@ const ASSETS = [
   "./icon-192.png",
   "./icon-512.png",
   "./kuu_waiting.png",
+  "./kuu_waiting_1.png",
+  "./kuu_waiting_2.png",
+  "./kuu_waiting_3.png",
+  "./kuu_waiting_4.png",
+  "./kuu_waiting_meal.png",
+  "./kuu_waiting_brush.png",
+  "./kuu_waiting_sleepy_night.png",
+  "./kuu_waiting_cosplay_bunny.png",
+  "./kuu_waiting_cosplay_nurse.png",
+  "./kuu_waiting_cosplay_cheer.png",
+  "./kuu_waiting_cosplay_magical.png",
   "./kuu_reading.png",
   "./kuu_recording.png",
   "./genre-mystery.png",

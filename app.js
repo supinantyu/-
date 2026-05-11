@@ -1,11 +1,125 @@
-const STORAGE_KEY = "kuuReadingTimerPwa.v11";
-const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v10", "kuuReadingTimerPwa.v9", "kuuReadingTimerPwa.v8", "kuuReadingTimerPwa.v7", "kuuReadingTimerPwa.v6", "kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
+const STORAGE_KEY = "kuuReadingTimerPwa.v14";
+const OLD_STORAGE_KEYS = ["kuuReadingTimerPwa.v13", "kuuReadingTimerPwa.v12", "kuuReadingTimerPwa.v11", "kuuReadingTimerPwa.v10", "kuuReadingTimerPwa.v9", "kuuReadingTimerPwa.v8", "kuuReadingTimerPwa.v7", "kuuReadingTimerPwa.v6", "kuuReadingTimerPwa.v5", "kuuReadingTimerPwa.v4", "kuuReadingTimerPwa.v3", "kuuReadingTimerPwa.v2", "kuuReadingTimerPwa.v1"];
 
 const IMAGE_PATHS = {
-  waiting: ["./kuu_waiting.png"],
   reading: ["./kuu_reading.png"],
   recording: ["./kuu_recording.png"]
 };
+
+const WAITING_VARIANTS = {
+  normal: {
+    image: "./kuu_waiting.png",
+    alt: "本を抱えて待機しているクー",
+    lines: [
+      "準備ができたら始めましょう、ご主人様。",
+      "今日はどの本にしますか？ クー、静かに待機しています。",
+      "本を開く準備ができたら、いつでもどうぞ。"
+    ]
+  },
+  dozing: {
+    image: "./kuu_waiting_1.png",
+    alt: "立ったまま居眠りしているクー",
+    lines: [
+      "……はっ。居眠りはしていません。省電力待機です、ご主人様。",
+      "準備ができたら呼んでください。クー、たぶん起きます。",
+      "本を抱えていると落ち着きます。少しだけ……まぶたも落ちますが。"
+    ]
+  },
+  peace: {
+    image: "./kuu_waiting_2.png",
+    alt: "ピースして得意げなクー",
+    lines: [
+      "ご主人様、いつでもどうぞ。今日の読書環境、良好です。",
+      "ふふ、準備は完璧です。クーの待機効率、かなり高いので。",
+      "一冊選ぶ時間まで含めて読書です。ゆっくり決めてください。"
+    ]
+  },
+  sparkle: {
+    image: "./kuu_waiting_3.png",
+    alt: "目をきらきらさせて待っていたクー",
+    lines: [
+      "お待ちしていました、ご主人様。今日はどの本にしますか？",
+      "その一冊、開く準備はできています。クーも少しわくわくしています。",
+      "ご主人様の読書時間、いつでも記録できます。どうぞ始めてください。"
+    ]
+  },
+  pajama: {
+    image: "./kuu_waiting_4.png",
+    alt: "寝起きでパジャマ姿のクー",
+    lines: [
+      "おはようございます、ご主人様……読書、もう始めますか？",
+      "まだ少し眠いですが、記録はきちんと取れます。たぶん。",
+      "朝の一冊もいいですね。クーも頭を起動しながら付き合います。"
+    ]
+  },
+  meal: {
+    image: "./kuu_waiting_meal.png",
+    alt: "ご飯を食べているクー",
+    lines: [
+      "お昼の補給中です、ご主人様。読書もエネルギーが要りますから。",
+      "もぐ……。ご主人様も、ちゃんと食べてから読みましょう。",
+      "食後の読書、少しだけ眠くなりますが……それもまた風情です。"
+    ]
+  },
+  brushing: {
+    image: "./kuu_waiting_brush.png",
+    alt: "面倒そうに歯磨きしているクー",
+    lines: [
+      "……歯磨き中です。えらいので褒めてもいいです。",
+      "夜の支度は少し面倒ですが、やらないと後で困ります。",
+      "ご主人様もちゃんと磨いてください。虫歯は読書の敵です。"
+    ]
+  },
+  sleepyNight: {
+    image: "./kuu_waiting_sleepy_night.png",
+    alt: "眠たげに待機しているクー",
+    lines: [
+      "……まだ起きているのですか、ご主人様。",
+      "深夜読書も嫌いではありませんが、無理はしないでください。",
+      "眠いです。でもご主人様が本を開くなら、ちゃんと付き合います。"
+    ]
+  },
+  cosplayBunny: {
+    image: "./kuu_waiting_cosplay_bunny.png",
+    alt: "照れながらバニー衣装を着たクー",
+    lines: [
+      "ご、ご主人様……これは、その……待機用の特別衣装です。",
+      "あまり見つめないでください。クーの冷却機構が少し不安です。",
+      "こういう格好でも、記録はきちんと取れます。そこは安心してください。"
+    ]
+  },
+  cosplayNurse: {
+    image: "./kuu_waiting_cosplay_nurse.png",
+    alt: "あざといナース服のクー",
+    lines: [
+      "はい、ご主人様。今日の読書コンディション、診察します。",
+      "お熱はありませんか？ でも本への情熱は高めですね。",
+      "無理な夜更かしには注意です。クーがやさしく管理します。"
+    ]
+  },
+  cosplayCheer: {
+    image: "./kuu_waiting_cosplay_cheer.png",
+    alt: "全力で応援するチアガール姿のクー",
+    lines: [
+      "ご主人様、ファイトです！ 今日の読書も全力応援します！",
+      "その一冊、最後までいけます！ クーがついています！",
+      "よし、その調子です！ 読書記録もばっちり残しましょう！"
+    ]
+  },
+  cosplayMagical: {
+    image: "./kuu_waiting_cosplay_magical.png",
+    alt: "フリフリの魔法少女姿のクー",
+    lines: [
+      "ご主人様の読書時間に、静かな魔法をかけておきます。",
+      "ページをめくるたび、少しだけ素敵な時間になりますように。",
+      "魔法少女形態のクーです。性能はだいたい据え置きです。"
+    ]
+  }
+};
+
+const RANDOM_WAITING_KEYS = ["normal", "dozing", "peace", "sparkle"];
+const COSPLAY_WAITING_KEYS = ["cosplayBunny", "cosplayNurse", "cosplayCheer", "cosplayMagical"];
+const COSPLAY_APPEARANCE_RATE = 0.08;
 
 const GENRE_MASTER = {
   mystery: { label: "ミステリー", image: "./genre-mystery.png" },
@@ -43,6 +157,41 @@ const STATUS_MASTER = {
   dropped: { label: "投了", className: "dropped" }
 };
 
+
+function randomFrom(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function getWaitingTimeSlot(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 0 && hour <= 5) return "sleepyNight";
+  if (hour >= 6 && hour <= 10) return "pajama";
+  if (hour >= 12 && hour <= 13) return "meal";
+  if (hour >= 19 && hour <= 20) return "brushing";
+  return "random";
+}
+
+function chooseWaitingVariant(forceRefresh = false) {
+  const slot = getWaitingTimeSlot();
+  if (!forceRefresh && state.currentWaitingSlot === slot && state.currentWaitingVariant) {
+    return;
+  }
+
+  let variant;
+  if (slot === "random") {
+    const useCosplay = Math.random() < COSPLAY_APPEARANCE_RATE;
+    const key = useCosplay ? randomFrom(COSPLAY_WAITING_KEYS) : randomFrom(RANDOM_WAITING_KEYS);
+    variant = WAITING_VARIANTS[key];
+  } else {
+    variant = WAITING_VARIANTS[slot];
+  }
+
+  state.currentWaitingSlot = slot;
+  state.currentWaitingVariant = variant;
+  state.currentWaitingMessage = randomFrom(variant.lines);
+}
+
+
 const state = {
   data: { books: [], notes: [] },
   timerState: "waiting",
@@ -51,6 +200,9 @@ const state = {
   timerStartedAt: null,
   timerId: null,
   wakeLock: null,
+  currentWaitingVariant: null,
+  currentWaitingMessage: "",
+  currentWaitingSlot: "",
   bookshelfFilters: {
     query: "",
     genre: "all",
@@ -137,7 +289,7 @@ const els = {
 };
 
 const stateConfig = {
-  waiting: { label: "待機中", message: "準備ができたら始めましょう、ご主人様。", alt: "待機中のクー" },
+  waiting: { label: "待機中", message: "", alt: "待機中のクー" },
   reading: { label: "読書中", message: "読書中です。クーは静かに見守ります。", alt: "読書中のクー" },
   recording: { label: "記録中", message: "今の感想を、忘れる前に残しましょう。", alt: "記録中のクー" }
 };
@@ -279,7 +431,11 @@ function setView(name) {
 }
 
 function setTimerState(nextState) {
+  const previousState = state.timerState;
   state.timerState = nextState;
+  if (nextState === "waiting") {
+    chooseWaitingVariant(previousState !== "waiting");
+  }
   if (nextState === "recording" && !els.dateInput.value) {
     els.dateInput.value = todayInputValue();
   }
@@ -297,13 +453,24 @@ function render() {
 
 function renderKuu() {
   const config = stateConfig[state.timerState];
+  let imageSrc = IMAGE_PATHS[state.timerState]?.[0] ?? "./kuu_waiting.png";
+  let altText = config.alt;
+  let message = config.message;
+
+  if (state.timerState === "waiting") {
+    chooseWaitingVariant(false);
+    imageSrc = state.currentWaitingVariant.image;
+    altText = state.currentWaitingVariant.alt;
+    message = state.currentWaitingMessage || randomFrom(state.currentWaitingVariant.lines);
+  }
+
   els.kuuImage.style.opacity = "0.2";
   setTimeout(() => {
-    els.kuuImage.src = IMAGE_PATHS[state.timerState][0];
-    els.kuuImage.alt = config.alt;
+    els.kuuImage.src = imageSrc;
+    els.kuuImage.alt = altText;
     els.kuuImage.style.opacity = "1";
   }, 70);
-  els.kuuMessage.textContent = config.message;
+  els.kuuMessage.textContent = message;
 }
 
 function renderBookSelect() {
@@ -818,10 +985,20 @@ async function releaseWakeLock() {
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && state.timerState === "reading") {
+  if (document.visibilityState !== "visible") return;
+
+  if (state.timerState === "reading") {
     updateElapsedFromClock();
     renderTimer();
     requestWakeLock();
+  }
+
+  if (state.timerState === "waiting") {
+    const previousSlot = state.currentWaitingSlot;
+    chooseWaitingVariant(false);
+    if (previousSlot !== state.currentWaitingSlot) {
+      render();
+    }
   }
 });
 
@@ -1133,6 +1310,15 @@ function bindEvents() {
   els.installHelpButton.addEventListener("click", () => els.installHelpModal.showModal());
   els.closeInstallHelpButton.addEventListener("click", () => els.installHelpModal.close());
 }
+
+window.addEventListener("focus", () => {
+  if (state.timerState !== "waiting") return;
+  const previousSlot = state.currentWaitingSlot;
+  chooseWaitingVariant(false);
+  if (previousSlot !== state.currentWaitingSlot) {
+    render();
+  }
+});
 
 window.addEventListener("pagehide", () => {
   releaseWakeLock();
